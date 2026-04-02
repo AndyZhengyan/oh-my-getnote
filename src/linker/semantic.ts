@@ -16,6 +16,9 @@ const client = new OpenAI({
  * Returns an array of embedding vectors (same order as input).
  */
 async function embedBatch(texts: string[]): Promise<number[][]> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY environment variable is not set. Set it before running the converter.');
+  }
   // Truncate each text to 2048 chars (gemini-embedding-001 limit)
   const inputs = texts.map(t => t.slice(0, 2048));
   const resp = await client.embeddings.create({

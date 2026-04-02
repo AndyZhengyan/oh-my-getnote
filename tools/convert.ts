@@ -29,11 +29,11 @@ export function inferDomain(tags: string[]): string {
   return '其他';
 }
 
-async function copyImages(
+function copyImages(
   html: string,
   sourceNotesDir: string,
   targetImageDir: string,
-): Promise<void> {
+): void {
   fs.mkdirSync(targetImageDir, { recursive: true });
   const imgMatches = [...html.matchAll(/src=["']([^"']+)["']/gi)];
   for (const m of imgMatches) {
@@ -43,7 +43,11 @@ async function copyImages(
       const srcPath = path.join(sourceNotesDir, src);
       if (fs.existsSync(srcPath)) {
         const fname = path.basename(srcPath);
-        fs.copyFileSync(srcPath, path.join(targetImageDir, fname));
+        try {
+          fs.copyFileSync(srcPath, path.join(targetImageDir, fname));
+        } catch {
+          // 单个图片复制失败不影响整体流程
+        }
       }
     }
   }
@@ -91,7 +95,7 @@ async function main() {
 
     // 复制图片
     const noteImageDir = path.join(imagesOutDir, note.id);
-    await copyImages(html, notesDir, noteImageDir);
+    copyImages(html, notesDir, noteImageDir);
 
     const result = convertHtmlToMarkdown(html, note.id);
     if (!result) continue;
