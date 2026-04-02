@@ -1,9 +1,9 @@
 // web/components/graph/ForceGraph.tsx
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { useGraphStore } from '@/stores/graphStore';
+import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -41,7 +41,7 @@ function getNodeLevel(
   nodeId: string,
   focusedNodeId: string | null,
   focusedNeighborIds: string[],
-  graphIndex: ReturnType<typeof useGraphStore>['graphIndex'],
+  graphIndex: GraphIndex | null,
 ): NodeLevel {
   if (!focusedNodeId || !graphIndex) return 'peripheral';
   if (nodeId === focusedNodeId) return 'focused';
@@ -66,7 +66,6 @@ function getNodeVisual(level: NodeLevel, isSelected: boolean) {
 }
 
 export default function ForceGraph() {
-  const fgRef = useRef<Record<string, unknown>>({});
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
     selectedNodeId, selectNode,
@@ -104,7 +103,6 @@ export default function ForceGraph() {
 
   return (
     <ForceGraph2D
-      ref={fgRef as React.Ref<unknown>}
       graphData={{ nodes, links }}
       width={canvasWidth}
       height={canvasHeight}
@@ -174,7 +172,7 @@ export default function ForceGraph() {
 }
 
 function buildGraphData(
-  index: ReturnType<typeof useGraphStore>['graphIndex'],
+  index: GraphIndex | null,
   domainFilter: string,
   typeFilter: string,
   searchQuery: string,
