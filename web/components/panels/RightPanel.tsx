@@ -5,7 +5,7 @@ import { useGraphStore } from '@/stores/graphStore';
 import { X } from 'lucide-react';
 
 export default function RightPanel() {
-  const { selectedNodeId, graphIndex, selectNode } = useGraphStore();
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode } = useGraphStore();
 
   if (!selectedNodeId || !graphIndex) return null;
 
@@ -27,6 +27,26 @@ export default function RightPanel() {
       overflowY: 'auto',
       zIndex: 200,
     }}>
+      {focusMode && (
+        <div style={{
+          padding: '8px 16px',
+          background: 'rgba(0,245,255,0.08)',
+          borderBottom: '1px solid rgba(0,245,255,0.15)',
+          fontSize: 11,
+          color: 'var(--primary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span>🧭 聚焦模式 · 右键节点展开关联</span>
+          <button
+            onClick={() => setFocusMode(false)}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 11 }}
+          >
+            退出聚焦
+          </button>
+        </div>
+      )}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '14px 16px 12px',
