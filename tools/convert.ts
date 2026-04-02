@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseHtmlFile } from '../src/parser/index.js';
 import { buildNoteConnections } from '../src/linker/semantic.js';
+import { projectTo2D } from '../src/linker/projector.js';
 import { Note } from '../src/types.js';
 import { convertHtmlToMarkdown, buildMarkdownString } from './markdown.js';
 import { buildGraphIndex, NoteIndexEntry } from './indexer.js';
@@ -98,6 +99,7 @@ async function main() {
     // 推断领域
     result.frontmatter.domain = inferDomain(note.tags);
 
+    // 幂等性：写入 Markdown 时，将 frontmatter 加入 metadataMap（无论文件是否已存在）
     metadataMap.set(note.id, result.frontmatter);
 
     // 写入 Markdown（幂等：跳过已存在的文件）
@@ -114,7 +116,7 @@ async function main() {
   // 3. 语义关联计算（跳过单个笔记或用户禁用）
   if (notes.length > 1) {
     console.log('🔗 计算语义关联...');
-    const connections = await buildNoteConnections(notes, 0.5, 8);
+    const { connections, embeddings } = await buildNoteConnections(notes, 0.5, 8, true);
     for (const [noteId, conns] of connections) {
       const meta = metadataMap.get(noteId);
       if (meta) {
@@ -126,6 +128,20 @@ async function main() {
       }
     }
     console.log(`   关联计算完成`);
+
+    // 3b. PCA 降维（复用 buildNoteConnections 已计算的 embeddings）
+    console.log('📐 PCA 降维...');
+    const ids = notes.map(n => n.id);
+    const vectors = ids.map(id => embeddings.get(id) || new Array(768).fill(0));
+    const coords = projectTo2D(vectors);
+    for (let i = 0; i < ids.length; i++) {
+      const meta = metadataMap.get(ids[i]);
+      if (meta) {
+        meta.x = coords[i][0];
+        meta.y = coords[i][1];
+      }
+    }
+    console.log('   PCA 降维完成');
 
     // 重新生成 Markdown（写入关联数据）
     console.log('📝 更新 Markdown 关联数据...');
