@@ -35,6 +35,18 @@ describe('convertHtmlToMarkdown', () => {
     const result = convertHtmlToMarkdown('<html><body><p>无内容</p></body></html>', 'bad-001', '/tmp/images/');
     expect(result).toBeNull();
   });
+
+  it('无标签时 tags 包含"其他"而非空数组', () => {
+    const noTagHtml = `<html><body>
+<h1>无标签笔记</h1>
+<p>创建于：2026-03-28 10:30:00</p>
+<hr>
+<div>正文内容</div>
+</body></html>`;
+    const result = convertHtmlToMarkdown(noTagHtml, 'no-tag-001', '/tmp/images/')!;
+    expect(result.frontmatter.tags).toEqual(['其他']);
+    expect(result.frontmatter.type).toBe('其他');
+  });
 });
 
 describe('buildMarkdownString', () => {
@@ -58,5 +70,12 @@ describe('buildMarkdownString', () => {
     expect(md).toContain('noteId: "note-002"');
     expect(md).toContain('score: 0.92');
     expect(md).toContain('type: "semantic"');
+  });
+
+  it('domain 为空时 frontmatter 不输出 domain 行', () => {
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'no-domain-001', '/tmp/images/')!;
+    expect(result.frontmatter.domain).toBe('');
+    const md = buildMarkdownString(result);
+    expect(md).not.toContain('domain:');
   });
 });

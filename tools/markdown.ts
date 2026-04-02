@@ -46,10 +46,12 @@ export function convertHtmlToMarkdown(
 
   // Tags
   const tagMatches = [...html.matchAll(/<span class="tag"[^>]*>([\s\S]*?)<\/span>/gi)];
-  const tags: string[] = tagMatches
+  let tags: string[] = tagMatches
     .map(m => stripHtml(m[1]).trim())
     .filter(t => t.length > 0 && t !== 'null');
   const type = tags[0] || '其他';
+  // 无标签时，tags 也包含 type
+  if (tags.length === 0) tags = [type];
 
   // Date
   let date = '';
@@ -101,7 +103,7 @@ export function buildMarkdownString(result: ConvertResult): string {
   lines.push(`title: "${fm.title.replace(/"/g, '\\"')}"`);
   lines.push(`type: "${fm.type}"`);
   lines.push(`tags: [${fm.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
-  lines.push(`domain: "${fm.domain}"`);
+  if (fm.domain) lines.push(`domain: "${fm.domain}"`);
   if (fm.date) lines.push(`date: "${fm.date}"`);
   if (fm.connections.length > 0) {
     lines.push('connections:');
