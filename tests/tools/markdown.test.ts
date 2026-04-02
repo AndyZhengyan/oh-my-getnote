@@ -10,7 +10,7 @@ const FIXTURE_HTML = `<html><body>
 
 describe('convertHtmlToMarkdown', () => {
   it('从 HTML 提取标题、日期、标签', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001', '/tmp/images/');
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001');
     expect(result).not.toBeNull();
     expect(result!.frontmatter.title).toBe('测试笔记标题');
     expect(result!.frontmatter.date).toBe('2026-03-28');
@@ -19,20 +19,20 @@ describe('convertHtmlToMarkdown', () => {
   });
 
   it('生成有效 frontmatter', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001', '/tmp/images/');
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001');
     expect(result!.frontmatter.id).toBe('test-uuid-001');
     expect(result!.frontmatter.title).toBeTruthy();
     expect(result!.frontmatter.type).toBeTruthy();
   });
 
   it('正文去除 HTML 标签', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001', '/tmp/images/');
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001');
     expect(result!.body).not.toContain('<');
     expect(result!.body).not.toContain('>');
   });
 
   it('处理无标题无标签的无效笔记返回 null', () => {
-    const result = convertHtmlToMarkdown('<html><body><p>无内容</p></body></html>', 'bad-001', '/tmp/images/');
+    const result = convertHtmlToMarkdown('<html><body><p>无内容</p></body></html>', 'bad-001');
     expect(result).toBeNull();
   });
 
@@ -43,7 +43,7 @@ describe('convertHtmlToMarkdown', () => {
 <hr>
 <div>正文内容</div>
 </body></html>`;
-    const result = convertHtmlToMarkdown(noTagHtml, 'no-tag-001', '/tmp/images/')!;
+    const result = convertHtmlToMarkdown(noTagHtml, 'no-tag-001')!;
     expect(result.frontmatter.tags).toEqual(['其他']);
     expect(result.frontmatter.type).toBe('其他');
   });
@@ -51,7 +51,7 @@ describe('convertHtmlToMarkdown', () => {
 
 describe('buildMarkdownString', () => {
   it('生成包含 frontmatter 和正文的完整 Markdown', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001', '/tmp/images/')!;
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-uuid-001')!;
     const md = buildMarkdownString(result);
     expect(md).toContain('---');
     expect(md).toContain('id: "test-uuid-001"');
@@ -61,7 +61,7 @@ describe('buildMarkdownString', () => {
   });
 
   it('正确序列化 connections', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-001', '/tmp/images/')!;
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'test-001')!;
     result.frontmatter.connections = [
       { noteId: 'note-002', score: 0.92, type: 'semantic' },
     ];
@@ -73,7 +73,7 @@ describe('buildMarkdownString', () => {
   });
 
   it('domain 为空时 frontmatter 不输出 domain 行', () => {
-    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'no-domain-001', '/tmp/images/')!;
+    const result = convertHtmlToMarkdown(FIXTURE_HTML, 'no-domain-001')!;
     expect(result.frontmatter.domain).toBe('');
     const md = buildMarkdownString(result);
     expect(md).not.toContain('domain:');

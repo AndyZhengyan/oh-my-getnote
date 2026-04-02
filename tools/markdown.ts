@@ -37,7 +37,6 @@ function stripHtml(html: string): string {
 export function convertHtmlToMarkdown(
   html: string,
   id: string,
-  _imagesOutDir: string,
 ): ConvertResult | null {
   // Title
   const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
