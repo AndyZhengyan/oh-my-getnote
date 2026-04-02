@@ -1,22 +1,18 @@
 // web/components/graph/ForceGraph.tsx
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useGraphStore, GraphIndex } from '@/stores/graphStore';
+import { useGraphStore } from '@/stores/graphStore';
 
-// react-force-graph-2d 不能 SSR，动态导入
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
   loading: () => (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100%', color: 'var(--text-muted)', fontSize: 14,
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 14 }}>
       加载图谱…
     </div>
   ),
-},);
+});
 
 const DOMAIN_COLORS: Record<string, string> = {
   'AI 核心技术与模型':   '#2563EB',
@@ -29,6 +25,8 @@ const DOMAIN_COLORS: Record<string, string> = {
   '其他':               '#6B7280',
 };
 
+type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral';
+
 interface GraphNode {
   id: string;
   title: string;
@@ -39,71 +37,136 @@ interface GraphNode {
   y?: number;
 }
 
+function getNodeLevel(
+  nodeId: string,
+  focusedNodeId: string | null,
+  focusedNeighborIds: string[],
+  graphIndex: ReturnType<typeof useGraphStore>['graphIndex'],
+): NodeLevel {
+  if (!focusedNodeId || !graphIndex) return 'peripheral';
+  if (nodeId === focusedNodeId) return 'focused';
+  if (focusedNeighborIds.includes(nodeId)) return 'level1';
+
+  // Level 2: neighbor of level1
+  const l1Conns = focusedNeighborIds.flatMap(id =>
+    graphIndex.index[id]?.connections.map((c: { noteId: string }) => c.noteId) ?? []
+  );
+  if (l1Conns.includes(nodeId)) return 'level2';
+
+  return 'peripheral';
+}
+
+function getNodeVisual(level: NodeLevel, isSelected: boolean) {
+  switch (level) {
+    case 'focused':   return { alpha: 1.0, rBase: 8, rScale: isSelected ? 1.3 : 1.0 };
+    case 'level1':    return { alpha: 0.7, rBase: 6, rScale: isSelected ? 1.2 : 0.95 };
+    case 'level2':    return { alpha: 0.4, rBase: 4, rScale: isSelected ? 1.1 : 0.85 };
+    default:          return { alpha: 0.15, rBase: 2, rScale: 1.0 };
+  }
+}
+
 export default function ForceGraph() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fgRef = useRef<any>(null);
+  const fgRef = useRef<Record<string, unknown>>({});
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
     selectedNodeId, selectNode,
+    focusedNodeId, focusedNeighborIds, focusMode,
+    currentScale, setCurrentScale, focusNode, setFocusMode,
   } = useGraphStore();
 
-  // 构建节点和边
   const { nodes, links } = buildGraphData(graphIndex, domainFilter, typeFilter, searchQuery);
 
-  useEffect(() => {
-    if (fgRef.current) {
-      (fgRef.current.d3Force?.('charge') as any)?.strength?.(-80);
-      (fgRef.current.d3Force?.('link') as any)?.distance?.(60);
-    }
-  }, []);
+  const handleZoom = useCallback((transform: { k: number }) => {
+    setCurrentScale(transform.k);
+  }, [setCurrentScale]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     selectNode(node.id);
   }, [selectNode]);
 
+  const handleNodeRightClick = useCallback((node: GraphNode) => {
+    focusNode(node.id);
+  }, [focusNode]);
+
   const handleBackgroundClick = useCallback(() => {
     selectNode(null);
-  }, [selectNode]);
+    setFocusMode(false);
+  }, [selectNode, setFocusMode]);
+
+  const handleBackgroundRightClick = useCallback(() => {
+    setFocusMode(false);
+  }, [setFocusMode]);
+
+  // Adjust width based on panel visibility
+  const rightPanelWidth = (selectedNodeId || focusMode) ? 360 : 0;
+  const canvasWidth = typeof window !== 'undefined' ? window.innerWidth - 280 - rightPanelWidth : 800;
+  const canvasHeight = typeof window !== 'undefined' ? window.innerHeight - 52 : 600;
 
   return (
     <ForceGraph2D
-      ref={fgRef}
+      ref={fgRef as React.Ref<unknown>}
       graphData={{ nodes, links }}
-      width={typeof window !== 'undefined' ? window.innerWidth - 280 - 360 : 800}
-      height={typeof window !== 'undefined' ? window.innerHeight - 52 : 600}
+      width={canvasWidth}
+      height={canvasHeight}
+      onZoom={handleZoom as (transform: { k: number }) => void}
       nodeCanvasObject={(node: unknown, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const n = node as GraphNode & { x: number; y: number };
-        const r = 6 + Math.min(n.connections / 2, 12);
+        const level = getNodeLevel(n.id, focusedNodeId, focusedNeighborIds, graphIndex);
+        const visual = getNodeVisual(level, n.id === selectedNodeId);
+        const maxConn = 10;
+        const r = (visual.rBase + Math.min(n.connections / 2, maxConn)) * visual.rScale;
         const color = DOMAIN_COLORS[n.domain] ?? '#6B7280';
-        const isSelected = n.id === selectedNodeId;
 
-        if (isSelected) {
-          const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 2.5);
-          grad.addColorStop(0, 'rgba(0,245,255,0.25)');
-          grad.addColorStop(1, 'rgba(0,245,255,0)');
+        ctx.globalAlpha = visual.alpha;
+
+        // Glow
+        if (n.id === selectedNodeId || level === 'focused') {
+          const glowR = r * 2.5;
+          const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, glowR);
+          grad.addColorStop(0, level === 'focused' ? 'rgba(0,245,255,0.3)' : 'rgba(100,160,255,0.25)');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r * 2.5, 0, Math.PI * 2);
+          ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
           ctx.fill();
         }
 
+        // Node circle
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r * (isSelected ? 1.2 : 1), 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.85;
         ctx.fill();
-        ctx.globalAlpha = 1;
 
-        if (isSelected) {
+        // Border
+        if (n.id === selectedNodeId) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.stroke();
+        } else if (level === 'focused') {
+          ctx.strokeStyle = 'rgba(0,245,255,0.6)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
+
+        // Labels (semantic zoom: only show at scale > 0.5 and not peripheral)
+        if (level !== 'peripheral' && globalScale > 0.5) {
+          const fontSize = Math.max(8, 11 / globalScale);
+          ctx.font = `${fontSize}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#e0e0e0';
+          const label = n.title.length > 18 ? n.title.slice(0, 17) + '…' : n.title;
+          ctx.fillText(label, n.x, n.y + r + 2);
         }
       }}
       linkColor={() => 'rgba(80,100,140,0.2)'}
       linkWidth={0.8}
       onNodeClick={handleNodeClick as (node: unknown) => void}
+      onNodeRightClick={handleNodeRightClick as (node: unknown) => void}
       onBackgroundClick={handleBackgroundClick}
+      onBackgroundRightClick={handleBackgroundRightClick}
       cooldownTicks={100}
       backgroundColor="#0A0B10"
     />
@@ -111,7 +174,7 @@ export default function ForceGraph() {
 }
 
 function buildGraphData(
-  index: GraphIndex | null,
+  index: ReturnType<typeof useGraphStore>['graphIndex'],
   domainFilter: string,
   typeFilter: string,
   searchQuery: string,
@@ -130,13 +193,7 @@ function buildGraphData(
 
     if (!seenNodes.has(id)) {
       seenNodes.add(id);
-      nodes.push({
-        id,
-        title: entry.title,
-        domain: entry.domain,
-        type: entry.type,
-        connections: entry.connections.length,
-      });
+      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length });
     }
 
     for (const conn of entry.connections) {
@@ -144,13 +201,7 @@ function buildGraphData(
         seenNodes.add(conn.noteId);
         const target = index.index[conn.noteId];
         if (target) {
-          nodes.push({
-            id: conn.noteId,
-            title: target.title,
-            domain: target.domain,
-            type: target.type,
-            connections: target.connections.length,
-          });
+          nodes.push({ id: conn.noteId, title: target.title, domain: target.domain, type: target.type, connections: target.connections.length });
         }
       }
       links.push({ source: id, target: conn.noteId, score: conn.score });
