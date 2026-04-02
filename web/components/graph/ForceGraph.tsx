@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useGraphStore } from '@/stores/graphStore';
+import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 
 // react-force-graph-2d 不能 SSR，动态导入
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
@@ -40,7 +40,8 @@ interface GraphNode {
 }
 
 export default function ForceGraph() {
-  const fgRef = useRef<{ d3Force: (name: string) => { strength: (n: number) => void } | null } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fgRef = useRef<any>(null);
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
     selectedNodeId, selectNode,
@@ -51,8 +52,8 @@ export default function ForceGraph() {
 
   useEffect(() => {
     if (fgRef.current) {
-      fgRef.current.d3Force?.('charge')?.strength?.(-80);
-      fgRef.current.d3Force?.('link')?.distance?.(60);
+      (fgRef.current.d3Force?.('charge') as any)?.strength?.(-80);
+      (fgRef.current.d3Force?.('link') as any)?.distance?.(60);
     }
   }, []);
 
@@ -66,7 +67,7 @@ export default function ForceGraph() {
 
   return (
     <ForceGraph2D
-      ref={fgRef as React.Ref<unknown>}
+      ref={fgRef}
       graphData={{ nodes, links }}
       width={typeof window !== 'undefined' ? window.innerWidth - 280 - 360 : 800}
       height={typeof window !== 'undefined' ? window.innerHeight - 52 : 600}
@@ -110,7 +111,7 @@ export default function ForceGraph() {
 }
 
 function buildGraphData(
-  index: ReturnType<typeof useGraphStore>['graphIndex'],
+  index: GraphIndex | null,
   domainFilter: string,
   typeFilter: string,
   searchQuery: string,
