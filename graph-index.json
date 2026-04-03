@@ -3385,11 +3385,6 @@
           "type": "semantic"
         },
         {
-          "noteId": "c2aaaa0fb992638b91de4e644e22fe1d",
-          "score": 0.7965603911214152,
-          "type": "semantic"
-        },
-        {
           "noteId": "ffb393d8c6e7803ea32f7f8844662a21",
           "score": 0.7884886498870552,
           "type": "semantic"
@@ -4021,11 +4016,6 @@
         {
           "noteId": "4fceb027c2763f5daf4fd10e2a6ee277",
           "score": 0.7836070097761555,
-          "type": "semantic"
-        },
-        {
-          "noteId": "398785bc6eb91813f363eb005677f939",
-          "score": 0.7771471756089571,
           "type": "semantic"
         },
         {
@@ -5305,11 +5295,6 @@
           "type": "semantic"
         },
         {
-          "noteId": "0db17f831e9009e00610d07e849fbb91",
-          "score": 0.8262147483769867,
-          "type": "semantic"
-        },
-        {
           "noteId": "d83512838d44fe0dccb1153c2c819a49",
           "score": 0.8213096935183175,
           "type": "semantic"
@@ -5663,11 +5648,6 @@
         {
           "noteId": "0929dacbadf50d696aa65f838af6ac7b",
           "score": 0.7583298802675182,
-          "type": "semantic"
-        },
-        {
-          "noteId": "398785bc6eb91813f363eb005677f939",
-          "score": 0.7577195504940565,
           "type": "semantic"
         }
       ]
@@ -7715,11 +7695,6 @@
           "type": "semantic"
         },
         {
-          "noteId": "5a8765a6a7cc90ccc855dd24601fc22e",
-          "score": 0.7667461205809591,
-          "type": "semantic"
-        },
-        {
           "noteId": "be4a2d813c27fd8527099c7ca42e03ae",
           "score": 0.7651028771124333,
           "type": "semantic"
@@ -9200,11 +9175,6 @@
         {
           "noteId": "6f2d923119af1582abeeef35589bd915",
           "score": 0.7449895892597747,
-          "type": "semantic"
-        },
-        {
-          "noteId": "5cfb823d5f49bdc05fd0b2c089a4c331",
-          "score": 0.7331839714453697,
           "type": "semantic"
         },
         {
@@ -13659,11 +13629,6 @@
         {
           "noteId": "183c4405ed447657c4dd1b12b5a86c54",
           "score": 0.7340365821062806,
-          "type": "semantic"
-        },
-        {
-          "noteId": "5cfb823d5f49bdc05fd0b2c089a4c331",
-          "score": 0.7300659090349314,
           "type": "semantic"
         },
         {
@@ -18189,11 +18154,6 @@
           "type": "semantic"
         },
         {
-          "noteId": "5cfb823d5f49bdc05fd0b2c089a4c331",
-          "score": 0.7269230438170055,
-          "type": "semantic"
-        },
-        {
           "noteId": "f861eb5167cb58dbb0333bef82f52147",
           "score": 0.7260591109848417,
           "type": "semantic"
@@ -20331,11 +20291,6 @@
         {
           "noteId": "a64efc4820019ad48b282ba14d90fc00",
           "score": 0.7080446879682799,
-          "type": "semantic"
-        },
-        {
-          "noteId": "0db17f831e9009e00610d07e849fbb91",
-          "score": 0.703065173005751,
           "type": "semantic"
         },
         {
@@ -24179,11 +24134,6 @@
           "type": "semantic"
         },
         {
-          "noteId": "398785bc6eb91813f363eb005677f939",
-          "score": 0.7844175736455348,
-          "type": "semantic"
-        },
-        {
           "noteId": "4fceb027c2763f5daf4fd10e2a6ee277",
           "score": 0.775709531684261,
           "type": "semantic"
@@ -25313,11 +25263,6 @@
         {
           "noteId": "f6d9a623e739856a6a167011d500ed8a",
           "score": 0.8637486660852134,
-          "type": "semantic"
-        },
-        {
-          "noteId": "ee95ce5358efeef7dd69f864769a2cbc",
-          "score": 0.8530398839719946,
           "type": "semantic"
         },
         {
@@ -29209,18 +29154,8 @@
           "type": "semantic"
         },
         {
-          "noteId": "e6aadcdfa8f4ec5716acbce314b1af7c",
-          "score": 0.8199070380512559,
-          "type": "semantic"
-        },
-        {
           "noteId": "ffb393d8c6e7803ea32f7f8844662a21",
           "score": 0.7970686607792274,
-          "type": "semantic"
-        },
-        {
-          "noteId": "c2aaaa0fb992638b91de4e644e22fe1d",
-          "score": 0.7949026233187539,
           "type": "semantic"
         },
         {
@@ -30255,11 +30190,6 @@
       "title": "Claude团队揭开大模型工作机制神秘面纱",
       "connections": [
         {
-          "noteId": "ee95ce5358efeef7dd69f864769a2cbc",
-          "score": 0.866227673040683,
-          "type": "semantic"
-        },
-        {
           "noteId": "cd40e089586f83350496f136fd3bc9cd",
           "score": 0.8637486660852134,
           "type": "semantic"
@@ -30750,18 +30680,8 @@
           "type": "semantic"
         },
         {
-          "noteId": "5cfb823d5f49bdc05fd0b2c089a4c331",
-          "score": 0.6391210352702075,
-          "type": "semantic"
-        },
-        {
           "noteId": "c890825c7cdcdaf6e32e35b40d230e70",
           "score": 0.635785367144113,
-          "type": "semantic"
-        },
-        {
-          "noteId": "5a8765a6a7cc90ccc855dd24601fc22e",
-          "score": 0.6332217425547904,
           "type": "semantic"
         },
         {
@@ -31451,7 +31371,7 @@
   },
   "stats": {
     "total_notes": 655,
-    "total_connections": 5240,
+    "total_connections": 5224,
     "by_domain": {
       "AI 核心技术与模型": 409,
       "AI 智能体与工程": 90,
