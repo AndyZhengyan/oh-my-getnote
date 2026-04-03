@@ -84,10 +84,10 @@ const handleTrailClick = () => {
 };
 ```
 
-- [ ] **Step 1: 修改 web/stores/graphStore.ts**
-- [ ] **Step 2: 修改 web/components/toolbar/Toolbar.tsx（轨迹按钮逻辑）**
-- [ ] **Step 3: 修改 web/components/graph/ForceGraph.tsx（记录节点点击）**
-- [ ] **Step 4: 提交**
+- [x] **Step 1: 修改 web/stores/graphStore.ts** ✅
+- [x] **Step 2: 修改 web/components/toolbar/Toolbar.tsx（轨迹按钮逻辑）** ✅
+- [x] **Step 3: 修改 web/components/graph/ForceGraph.tsx（记录节点点击）** ✅
+- [x] **Step 4: 提交** ✅ (43259a6)
 
 ---
 
@@ -113,10 +113,10 @@ ForceGraph 中高亮：
 - `highlightedTrailNodeIds` 包含的节点：透明度 1.0，节点加粗边框
 - 路径连线：颜色变为 `--primary`，宽度 2px
 
-- [ ] **Step 1: graphStore 新增 `highlightedTrailId` / `playTrail`**
-- [ ] **Step 2: ForceGraph 读取 `highlightedTrailNodeIds` 高亮路径**
-- [ ] **Step 3: LeftNav 轨迹点击调用 `playTrail`**
-- [ ] **Step 4: 提交**
+- [x] **Step 1: graphStore 新增 `highlightedTrailId` / `playTrail`** ✅
+- [x] **Step 2: ForceGraph 读取 `highlightedTrailNodeIds` 高亮路径** ✅
+- [x] **Step 3: LeftNav 轨迹点击调用 `playTrail`** ✅
+- [x] **Step 4: 提交** ✅ (2a5d6f6)
 
 ---
 
@@ -148,8 +148,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 </AnimatePresence>
 ```
 
-- [ ] **Step 1: 修改 RightPanel.tsx 添加 Framer Motion 动画**
-- [ ] **Step 2: 提交**
+- [x] **Step 1: 修改 RightPanel.tsx 添加 Framer Motion 动画** ✅
+- [x] **Step 2: 提交** ✅ (2769efc)
 
 ---
 
@@ -165,14 +165,14 @@ ctx.lineWidth = 1.5;
 ctx.stroke();
 ```
 
-- [ ] **Step 1: ForceGraph.tsx 添加脉冲呼吸灯效果**
-- [ ] **Step 2: 添加 CSS `@keyframes spin` 到 globals.css（Loader2 旋转）**
-- [ ] **Step 3: 提交**
+- [x] **Step 1: ForceGraph.tsx 添加脉冲呼吸灯效果** ✅
+- [x] **Step 2: 添加 CSS `@keyframes spin` 到 globals.css（Loader2 旋转）** ✅
+- [x] **Step 3: 提交** ✅ (633061d)
 
 ---
 
 ## Task 5: 构建验证
 
-- [ ] 构建
-- [ ] dev server 验证
-- [ ] 推送 GitHub
+- [x] 构建 ✅ (PASS, 0 errors)
+- [x] dev server 验证 ✅ (localhost:3000 返回有效 HTML)
+- [x] 推送 GitHub ✅ (633061d 已推送)
