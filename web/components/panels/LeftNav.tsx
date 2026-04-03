@@ -24,7 +24,7 @@ interface Trail {
 }
 
 export default function LeftNav() {
-  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter } = useGraphStore();
+  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId } = useGraphStore();
   const [showTrails, setShowTrails] = useState(false);
   const [trails, setTrails] = useState<Trail[]>([]);
 
@@ -125,26 +125,32 @@ export default function LeftNav() {
                 暂无轨迹记录
               </div>
             )}
-            {trails.slice(0, 10).map(trail => (
-              <div key={trail.id} style={{
-                padding: '6px 16px 6px 32px',
-                fontSize: 12,
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                borderLeft: '2px solid transparent',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderLeftColor = 'var(--primary)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderLeftColor = 'transparent'; }}
-              >
-                {trail.name}
-                <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
-                  {trail.steps.length}步
-                </span>
-              </div>
-            ))}
+            {trails.slice(0, 10).map(trail => {
+              const isActive = highlightedTrailId === trail.id;
+              return (
+                <div key={trail.id} style={{
+                  padding: '6px 16px 6px 32px',
+                  fontSize: 12,
+                  color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  borderLeft: `2px solid ${isActive ? 'var(--primary)' : 'transparent'}`,
+                  background: isActive ? 'rgba(0,245,255,0.06)' : 'transparent',
+                  transition: 'background 0.15s, color 0.15s, border-left-color 0.15s',
+                }}
+                onClick={() => playTrail(trail.id)}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderLeftColor = 'var(--primary)'; }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderLeftColor = 'transparent'; }}
+                >
+                  {trail.name}
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
+                    {trail.steps.length}步
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

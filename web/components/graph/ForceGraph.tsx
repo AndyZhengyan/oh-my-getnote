@@ -71,9 +71,14 @@ export default function ForceGraph() {
     selectedNodeId, selectNode,
     focusedNodeId, focusedNeighborIds, focusMode,
     currentScale, setCurrentScale, focusNode, setFocusMode,
+    highlightedTrailNodeIds,
   } = useGraphStore();
 
   const { nodes, links } = buildGraphData(graphIndex, domainFilter, typeFilter, searchQuery);
+  const trailNodeSet = new Set(highlightedTrailNodeIds);
+  const trailLinkSet = new Set(
+    highlightedTrailNodeIds.slice(0, -1).map((id, i) => `${id}→${highlightedTrailNodeIds[i + 1]}`)
+  );
 
   const handleZoom = useCallback((transform: { k: number }) => {
     setCurrentScale(transform.k);
@@ -146,7 +151,15 @@ export default function ForceGraph() {
           ctx.stroke();
         }
 
-        ctx.globalAlpha = 1;
+        // Trail highlight: force full opacity and add bright cyan border for trail nodes
+        if (trailNodeSet.has(n.id)) {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = '#00F5FF';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else {
+          ctx.globalAlpha = 1;
+        }
 
         // Labels (semantic zoom: only show at scale > 0.5 and not peripheral)
         if (level !== 'peripheral' && globalScale > 0.5) {
@@ -159,8 +172,20 @@ export default function ForceGraph() {
           ctx.fillText(label, n.x, n.y + r + 2);
         }
       }}
-      linkColor={() => 'rgba(80,100,140,0.2)'}
-      linkWidth={0.8}
+      linkColor={(link: unknown) => {
+        const l = link as { source: { id: string } | string; target: { id: string } | string };
+        const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
+        const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
+        if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#00F5FF';
+        return 'rgba(80,100,140,0.2)';
+      }}
+      linkWidth={(link: unknown) => {
+        const l = link as { source: { id: string } | string; target: { id: string } | string };
+        const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
+        const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
+        if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return 2;
+        return 0.8;
+      }}
       onNodeClick={handleNodeClick as (node: unknown) => void}
       onNodeRightClick={handleNodeRightClick as (node: unknown) => void}
       onBackgroundClick={handleBackgroundClick}
