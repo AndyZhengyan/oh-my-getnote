@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,          // 按顺序跑，便于观察
-  retries: 1,
+  retries: 0,
   timeout: 30000,
   reporter: [
     ['list'],

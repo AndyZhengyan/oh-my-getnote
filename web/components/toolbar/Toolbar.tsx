@@ -27,6 +27,22 @@ export default function Toolbar() {
   const domains = graphIndex?.domains ?? [];
   const types = Object.keys(graphIndex?.stats.by_type ?? {});
 
+  // 计算当前筛选条件下的笔记数和连接数
+  const filteredStats = (() => {
+    if (!graphIndex) return null;
+    const q = (searchQuery || '').toLowerCase();
+    let count = 0;
+    let connections = 0;
+    for (const [id, entry] of Object.entries(graphIndex.index)) {
+      if (domainFilter && entry.domain !== domainFilter) continue;
+      if (typeFilter && entry.type !== typeFilter) continue;
+      if (q && !entry.title.toLowerCase().includes(q)) continue;
+      count++;
+      connections += entry.connections.length;
+    }
+    return { count, connections };
+  })();
+
   return (
     <header
       style={{
@@ -114,9 +130,9 @@ export default function Toolbar() {
       </div>
 
       {/* Stats */}
-      {graphIndex && (
+      {filteredStats && (
         <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-          {graphIndex.stats.total_notes} 篇 · {graphIndex.stats.total_connections} 条关联
+          {filteredStats.count} 篇 · {filteredStats.connections} 条关联
         </span>
       )}
 
