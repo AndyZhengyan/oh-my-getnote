@@ -1,7 +1,7 @@
 // web/components/graph/ForceGraph.tsx
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 
@@ -74,6 +74,22 @@ export default function ForceGraph() {
     highlightedTrailNodeIds,
   } = useGraphStore();
 
+  // Smooth breathing animation: update pulse at ~30fps, not every canvas frame
+  const pulseRef = useRef(0);
+  useEffect(() => {
+    let raf: number;
+    let last = 0;
+    const animate = (t: number) => {
+      if (t - last > 33) { // ~30fps cap
+        pulseRef.current = 0.5 + 0.5 * Math.sin(t / 500);
+        last = t;
+      }
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   const { nodes, links } = buildGraphData(graphIndex, domainFilter, typeFilter, searchQuery);
   const trailNodeSet = new Set(highlightedTrailNodeIds);
   const trailLinkSet = new Set(
@@ -122,9 +138,9 @@ export default function ForceGraph() {
 
         ctx.globalAlpha = visual.alpha;
 
-        // Breathing glow for focused nodes
+        // Breathing glow for focused nodes (reads from throttled pulse ref)
         if (level === 'focused') {
-          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 500);
+          const pulse = pulseRef.current;
           const glowR = r * (2.5 + pulse * 1.5);
           const grad = ctx.createRadialGradient(n.x, n.y, r * 0.8, n.x, n.y, glowR);
           grad.addColorStop(0, `rgba(0,245,255,${0.15 + pulse * 0.2})`);
