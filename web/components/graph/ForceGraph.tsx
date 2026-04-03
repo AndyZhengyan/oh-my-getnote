@@ -122,11 +122,25 @@ export default function ForceGraph() {
 
         ctx.globalAlpha = visual.alpha;
 
-        // Glow
-        if (n.id === selectedNodeId || level === 'focused') {
+        // Breathing glow for focused nodes
+        if (level === 'focused') {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 500);
+          const glowR = r * (2.5 + pulse * 1.5);
+          const grad = ctx.createRadialGradient(n.x, n.y, r * 0.8, n.x, n.y, glowR);
+          grad.addColorStop(0, `rgba(0,245,255,${0.15 + pulse * 0.2})`);
+          grad.addColorStop(0.5, `rgba(0,245,255,${0.05 + pulse * 0.1})`);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Glow for selected node
+        if (n.id === selectedNodeId && level !== 'focused') {
           const glowR = r * 2.5;
           const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, glowR);
-          grad.addColorStop(0, level === 'focused' ? 'rgba(0,245,255,0.3)' : 'rgba(100,160,255,0.25)');
+          grad.addColorStop(0, 'rgba(100,160,255,0.25)');
           grad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = grad;
           ctx.beginPath();
