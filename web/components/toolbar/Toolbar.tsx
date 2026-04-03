@@ -7,8 +7,22 @@ import { Search, Route } from 'lucide-react';
 export default function Toolbar() {
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
-    setDomainFilter, setTypeFilter, setSearchQuery, startTrail, trailRecording,
+    setDomainFilter, setTypeFilter, setSearchQuery,
+    trailRecording, savedTrails, startTrail, saveTrail, finishTrail,
   } = useGraphStore();
+
+  const handleTrailClick = () => {
+    if (trailRecording) {
+      const name = window.prompt(
+        '保存探索轨迹',
+        `探索 ${new Date().toLocaleDateString('zh-CN')}`
+      );
+      if (name) saveTrail(name);
+      else finishTrail();
+    } else {
+      startTrail();
+    }
+  };
 
   const domains = graphIndex?.domains ?? [];
   const types = Object.keys(graphIndex?.stats.by_type ?? {});
@@ -108,12 +122,12 @@ export default function Toolbar() {
 
       {/* Trail button */}
       <button
-        onClick={startTrail}
+        onClick={handleTrailClick}
         style={{
-          background: trailRecording ? 'rgba(0,245,255,0.15)' : 'rgba(255,255,255,0.05)',
-          border: `1px solid ${trailRecording ? 'rgba(0,245,255,0.35)' : 'rgba(255,255,255,0.08)'}`,
+          background: trailRecording ? 'rgba(255,59,59,0.15)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${trailRecording ? 'rgba(255,59,59,0.35)' : 'rgba(255,255,255,0.08)'}`,
           borderRadius: 6,
-          color: trailRecording ? 'var(--primary)' : 'var(--text-secondary)',
+          color: trailRecording ? '#FF3B3B' : 'var(--text-secondary)',
           padding: '5px 10px',
           fontSize: 12,
           cursor: 'pointer',
