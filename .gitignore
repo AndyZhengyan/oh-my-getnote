@@ -4,6 +4,9 @@ dist/
 *.log
 .DS_Store
 .env
+.npmrc
+.playwright-mcp/
+.superpowers/
 
 # Private note content — never commit
 data/
