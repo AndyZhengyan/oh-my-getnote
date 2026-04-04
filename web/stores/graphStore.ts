@@ -8,6 +8,7 @@ export interface NoteIndexEntry {
   domain: string;
   type: string;
   title: string;
+  bodyPreview?: string;
   connections: Array<{ noteId: string; score: number; type: string }>;
 }
 
@@ -35,6 +36,16 @@ export interface Trail {
   createdAt: string;
   steps: TrailStep[];
 }
+
+/** Simple event bus for graph operations */
+let _resetFn: (() => void) | null = null;
+let _heatFn: (() => void) | null = null;
+export function registerGraphReset(fn: () => void) { _resetFn = fn; }
+export function unregisterGraphReset() { _resetFn = null; }
+export function registerGraphHeat(fn: () => void) { _heatFn = fn; }
+export function unregisterGraphHeat() { _heatFn = null; }
+export function triggerGraphReset() { _resetFn?.(); }
+export function triggerGraphHeat() { _heatFn?.(); }
 
 interface GraphState {
   graphIndex: GraphIndex | null;
