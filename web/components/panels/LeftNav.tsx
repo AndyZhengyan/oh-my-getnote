@@ -5,15 +5,24 @@ import { useState, useEffect } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { Bookmark } from 'lucide-react';
 
+/** 英文字母序优先，其余按 localeCompare 排的 comparator */
+function compareAlphaFirst(a: string, b: string): number {
+  const aIsEN = /^[A-Za-z]/.test(a);
+  const bIsEN = /^[A-Za-z]/.test(b);
+  if (aIsEN && !bIsEN) return -1;
+  if (!aIsEN && bIsEN) return 1;
+  return a.localeCompare(b, 'zh-CN');
+}
+
 const DOMAIN_COLORS: Record<string, string> = {
-  'AI 核心技术与模型':   '#2563EB',
-  'AI 产业生态与巨头':  '#7C3AED',
-  'AI 智能体与工程':    '#00F5FF',
-  '管理、职场与个人成长': '#D97706',
-  '行业应用与生活闲谈': '#DB2777',
-  '企业数字化与数据治理': '#0284C7',
-  '社会、安全与伦理':  '#7C22CE',
-  '其他':               '#6B7280',
+  'AI 核心技术与模型':   '#6366F1',
+  'AI 产业生态与巨头':  '#8B5CF6',
+  'AI 智能体与工程':    '#10B981',
+  '管理、职场与个人成长': '#F59E0B',
+  '行业应用与生活闲谈': '#EC4899',
+  '企业数字化与数据治理': '#3B82F6',
+  '社会、安全与伦理':  '#A855F7',
+  '其他':               '#9CA3AF',
 };
 
 interface Trail {
@@ -42,62 +51,91 @@ export default function LeftNav() {
   return (
     <aside style={{
       width: 280,
-      height: 'calc(100vh - 52px)',
+      height: 'calc(100vh - 14px)',
       position: 'fixed',
-      top: 52,
-      left: 0,
-      background: 'rgba(22,27,34,0.6)',
-      borderRight: '1px solid var(--border-dim)',
+      top: 78, // below the floating toolbar
+      left: 14,
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
       overflowY: 'auto',
       display: 'flex',
       flexDirection: 'column',
+      zIndex: 50,
     }}>
-      {/* 全部笔记 */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ padding: '12px 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      {/* Domain list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
+        <div style={{ padding: '0 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
           知识领域
         </div>
 
         <NavItem
           active={domainFilter === '' && typeFilter === ''}
           onClick={() => { setDomainFilter(''); setTypeFilter(''); }}
-          color="#fff"
+          color="#9CA3AF"
           count={graphIndex.stats.total_notes}
           label="全部笔记"
         />
 
-        {graphIndex.domains.map(domain => (
+        {graphIndex.domains
+          .filter(d => d !== '其他')
+          .sort(compareAlphaFirst)
+          .map(domain => (
+            <NavItem
+              key={domain}
+              active={domainFilter === domain}
+              onClick={() => setDomainFilter(domainFilter === domain ? '' : domain)}
+              color={DOMAIN_COLORS[domain] ?? '#9CA3AF'}
+              count={graphIndex.stats.by_domain[domain] ?? 0}
+              label={domain}
+            />
+          ))}
+
+        {graphIndex.domains.includes('其他') && (
           <NavItem
-            key={domain}
-            active={domainFilter === domain}
-            onClick={() => setDomainFilter(domainFilter === domain ? '' : domain)}
-            color={DOMAIN_COLORS[domain] ?? '#6B7280'}
-            count={graphIndex.stats.by_domain[domain] ?? 0}
-            label={domain}
+            active={domainFilter === '其他'}
+            onClick={() => setDomainFilter(domainFilter === '其他' ? '' : '其他')}
+            color={DOMAIN_COLORS['其他'] ?? '#9CA3AF'}
+            count={graphIndex.stats.by_domain['其他'] ?? 0}
+            label="其他"
           />
-        ))}
+        )}
 
         {types.length > 0 && (
           <>
-            <div style={{ padding: '12px 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ padding: '12px 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
               笔记类型
             </div>
-            {types.map(type => (
-              <NavItem
-                key={type}
-                active={typeFilter === type}
-                onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
-                color="var(--text-secondary)"
-                count={graphIndex.stats.by_type[type]}
+            {types
+              .filter(t => t !== '其他')
+              .sort(compareAlphaFirst)
+              .map(type => (
+                <NavItem
+                  key={type}
+                  active={typeFilter === type}
+                  onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
+                  color="var(--text-secondary)"
+                  count={graphIndex.stats.by_type[type]}
                 label={type}
               />
             ))}
+
+            {types.includes('其他') && (
+              <NavItem
+                active={typeFilter === '其他'}
+                onClick={() => setTypeFilter(typeFilter === '其他' ? '' : '其他')}
+                color="var(--text-secondary)"
+                count={graphIndex.stats.by_type['其他']}
+                label="其他"
+              />
+            )}
           </>
         )}
       </div>
 
-      {/* 轨迹历史 */}
-      <div style={{ borderTop: '1px solid var(--border-dim)', padding: '8px 0' }}>
+      {/* Trail history */}
+      <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
         <button
           onClick={() => setShowTrails(!showTrails)}
           style={{
@@ -108,10 +146,12 @@ export default function LeftNav() {
             padding: '8px 16px',
             background: 'none',
             border: 'none',
-            color: showTrails ? 'var(--primary)' : 'var(--text-secondary)',
+            color: showTrails ? 'var(--accent)' : 'var(--text-secondary)',
             fontSize: 13,
+            fontFamily: 'var(--font-ui)',
             cursor: 'pointer',
             textAlign: 'left',
+            transition: 'color 0.12s',
           }}
         >
           <Bookmark size={13} />
@@ -131,18 +171,19 @@ export default function LeftNav() {
                 <div key={trail.id} style={{
                   padding: '6px 16px 6px 32px',
                   fontSize: 12,
-                  color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  borderLeft: `2px solid ${isActive ? 'var(--primary)' : 'transparent'}`,
-                  background: isActive ? 'rgba(0,245,255,0.06)' : 'transparent',
+                  borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+                  background: isActive ? 'var(--accent-light)' : 'transparent',
                   transition: 'background 0.15s, color 0.15s, border-left-color 0.15s',
+                  fontFamily: 'var(--font-ui)',
                 }}
                 onClick={() => playTrail(trail.id)}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderLeftColor = 'var(--primary)'; }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderLeftColor = 'transparent'; }}
+                onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
+                onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
                 >
                   {trail.name}
                   <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
@@ -176,10 +217,11 @@ function NavItem({
         alignItems: 'center',
         gap: 8,
         cursor: 'pointer',
-        background: active ? 'rgba(0,245,255,0.08)' : 'transparent',
-        color: active ? 'var(--primary)' : 'var(--text-secondary)',
+        background: active ? 'var(--accent-light)' : 'transparent',
+        color: active ? 'var(--accent)' : 'var(--text-secondary)',
         fontSize: 13,
-        transition: 'background 0.15s, color 0.15s',
+        fontFamily: 'var(--font-ui)',
+        transition: 'background 0.12s, color 0.12s',
       }}
     >
       <span style={{

@@ -6,6 +6,7 @@ export interface NoteIndexEntry {
   domain: string;
   type: string;
   title: string;
+  bodyPreview?: string;
   connections: Array<{ noteId: string; score: number; type: string }>;
 }
 
@@ -18,6 +19,7 @@ export interface GraphIndex {
     domain: string;
     type: string;
     title: string;
+    bodyPreview?: string;
     connections: Array<{ noteId: string; score: number; type: string }>;
   }>;
   stats: {
@@ -47,6 +49,7 @@ export function buildGraphIndex(entries: NoteIndexEntry[]): GraphIndex {
       domain: entry.domain,
       type: entry.type,
       title: entry.title,
+      bodyPreview: entry.bodyPreview,
       connections: entry.connections,
     };
   }
