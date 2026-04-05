@@ -51,16 +51,26 @@ export default function GraphPage() {
   }
 
   return (
-    <main style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
+    <main style={{
+      background: 'var(--bg-base)',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
       <Toolbar />
       <LeftNav />
       {/* 图谱画布区域：点阵背景 */}
       <div style={{
-        marginLeft: 308,
-        height: 'calc(100vh - 14px)',
+        position: 'fixed',
+        top: 78,
+        left: 308,
+        right: 16,
+        bottom: 16,
         backgroundImage: 'radial-gradient(circle, #D1D5DB 1px, transparent 1px)',
         backgroundSize: '24px 24px',
         backgroundPosition: '14px 78px',
+        overflow: 'hidden',
       }}>
         <ForceGraph />
       </div>
