@@ -100,6 +100,7 @@ export default function ForceGraph() {
   const fgRef = useRef<ForceGraphMethods<NodeObject, LinkObject>>(undefined);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
 
   const { nodes, links } = useMemo(
     () => buildGraphData(graphIndex, domainFilter, typeFilter, searchQuery, selectedNodeId, focusedNodeId, focusedNeighborIds),
@@ -163,8 +164,11 @@ export default function ForceGraph() {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect || !graphIndex) return;
 
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    // Convert mouse position to canvas-world coordinates (account for zoom + pan)
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const mx = (screenX - zoomState.x) / zoomState.k;
+    const my = (screenY - zoomState.y) / zoomState.k;
 
     let closest: TooltipState | null = null;
     let closestDist = 25;
@@ -184,8 +188,8 @@ export default function ForceGraph() {
         closestDist = dist;
         closest = {
           nodeId: node.id,
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
+          x: screenX,
+          y: screenY,
           title: node.title,
           domain: node.domain,
           snippet: node.connections > 0 ? `${node.connections} 条关联` : '暂无关联',
@@ -193,17 +197,18 @@ export default function ForceGraph() {
       }
     }
     setTooltip(closest);
-  }, [nodes, graphIndex, selectedNodeId, focusedNodeId, focusedNeighborIds]);
+  }, [nodes, graphIndex, selectedNodeId, focusedNodeId, focusedNeighborIds, zoomState]);
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null);
   }, []);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const handleZoom = useCallback((transform: { k: number }) => {
+  const handleZoom = useCallback((transform: { k: number; x: number; y: number }) => {
     requestAnimationFrame(() => {
       setCurrentScale(Math.min(transform.k, MAX_ZOOM));
     });
+    setZoomState({ x: transform.x, y: transform.y, k: transform.k });
   }, [setCurrentScale]);
 
   // Cap auto-zoom after nodes change — don't zoom in too much
