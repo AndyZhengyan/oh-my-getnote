@@ -134,43 +134,49 @@ export default function Toolbar() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 4 }}>
-        <select
-          value={domainFilter}
-          onChange={e => setDomainFilter(e.target.value)}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            color: 'var(--text-secondary)',
-            padding: '4px 6px',
-            fontSize: 12,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          <option value="">领域</option>
-          {domains.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+        <span className="filter-group">
+          <span className="filter-badge filter-badge-domain">领域</span>
+          <select
+            value={domainFilter}
+            onChange={e => setDomainFilter(e.target.value)}
+            className="filter-select"
+            style={{
+              background: 'rgba(0,0,0,0.04)',
+              border: '1px solid transparent',
+              color: 'var(--text-secondary)',
+              padding: '4px 6px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="">全部</option>
+            {domains.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </span>
 
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            color: 'var(--text-secondary)',
-            padding: '4px 6px',
-            fontSize: 12,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          <option value="">类型</option>
-          {types.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <span className="filter-group">
+          <span className="filter-badge filter-badge-type">类型</span>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="filter-select"
+            style={{
+              background: 'rgba(0,0,0,0.04)',
+              border: '1px solid transparent',
+              color: 'var(--text-secondary)',
+              padding: '4px 6px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="">全部</option>
+            {types.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </span>
       </div>
 
       {/* Stats */}

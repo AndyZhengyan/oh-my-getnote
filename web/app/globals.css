@@ -59,6 +59,45 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
+/* 过滤器分组标签 */
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 6px 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-right: none;
+  font-family: var(--font-ui);
+  line-height: 1.4;
+}
+
+.filter-badge-domain {
+  background: rgba(0, 245, 255, 0.12);
+  color: var(--primary);
+  border-color: rgba(0, 245, 255, 0.25);
+}
+
+.filter-badge-type {
+  background: rgba(112, 0, 255, 0.12);
+  color: var(--secondary);
+  border-color: rgba(112, 0, 255, 0.25);
+}
+
+.filter-group .filter-select {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
 /* Loader2 spin safety net */
 @keyframes spin {
   from { transform: rotate(0deg); }
