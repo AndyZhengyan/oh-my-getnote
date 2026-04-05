@@ -32,419 +32,444 @@ function decodeEntities(str: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
+    .replace(/&ldquo;/gi, '\u201c')
+    .replace(/&rdquo;/gi, '\u201d')
+    .replace(/&lsquo;/gi, '\u2018')
+    .replace(/&rsquo;/gi, '\u2019')
+    .replace(/&mdash;/gi, '\u2014')
+    .replace(/&ndash;/gi, '\u2013')
+    .replace(/&hellip;/gi, '\u2026')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
-// ---------------------------------------------------------------------------
-// Recursive HTML → Markdown converter
-// ---------------------------------------------------------------------------
+interface TokenText { type: 'text'; content: string }
+interface TokenTag  { type: 'tag'; full: string; name: string; selfClosing: boolean; closing: boolean }
+type Token = TokenText | TokenTag;
 
-/** Strip a single HTML tag, returning its inner HTML */
-function innerOf(tagName: string, html: string): string {
-  const re = new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`, 'i');
-  const m = html.match(re);
-  return m ? m[1] : '';
-}
-
-/** Tokenise HTML into a flat array of "tag" | "text" tokens */
-function tokenise(html: string): string[] {
-  const tokens: string[] = [];
-  let remaining = html;
+function tokenise(raw: string): Token[] {
+  const tokens: Token[] = [];
+  let remaining = raw;
   while (remaining.length > 0) {
     const ltIdx = remaining.indexOf('<');
     if (ltIdx === -1) {
-      if (remaining.trim()) tokens.push(remaining);
+      if (remaining.trim()) tokens.push({ type: 'text', content: remaining });
       break;
     }
-    if (ltIdx > 0) tokens.push(remaining.slice(0, ltIdx));
-    const gtIdx = remaining.indexOf('>');
+    if (ltIdx > 0) {
+      const txt = remaining.slice(0, ltIdx);
+      if (txt.trim()) tokens.push({ type: 'text', content: txt });
+    }
+    const gtIdx = remaining.indexOf('>', ltIdx);
     if (gtIdx === -1) break;
-    tokens.push(remaining.slice(ltIdx, gtIdx + 1));
+    const full = remaining.slice(ltIdx, gtIdx + 1);
+    const inner = full.slice(1, -1);
+    const nm = inner.match(/^\/?([a-zA-Z0-9\-]+)/);
+    tokens.push({
+      type: 'tag', full,
+      name: nm ? nm[1].toLowerCase() : '',
+      closing: inner.startsWith('/'),
+      selfClosing: inner.endsWith('/') || ['br', 'hr', 'img', 'input', 'source', 'meta', 'link'].includes(nm?.[1]?.toLowerCase() || ''),
+    });
     remaining = remaining.slice(gtIdx + 1);
   }
   return tokens;
 }
 
-/** Strip all HTML tags from text, decode entities, collapse whitespace */
-function stripTags(html: string): string {
-  return decodeEntities(html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
-}
-
-/** Normalise whitespace at start / end of a line */
-function norm(text: string): string {
-  return text.replace(/^[ \t]+/, '').replace(/[ \t]+$/, '').replace(/[ \t]+/g, ' ');
-}
-
-/** Process inline elements within a text node (bold, italic, code, links) */
-function inline(text: string): string {
-  // links: <a href="...">label</a>
-  text = text.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => {
-    return `[${inline(label.trim())}](${href})`;
-  });
-  // bold+italic: <strong><em> or <em><strong>
-  text = text.replace(/<\/?(?:strong|b)[^>]*>((?:<\/?(?:em|i)[^>]*>|[\s\S])*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `***${inline(inner)}***`);
-  // bold: <strong> or <b>
-  text = text.replace(/<\/?(?:strong|b)[^>]*>([\s\S]*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `**${inline(inner)}**`);
-  // italic: <em> or <i>
-  text = text.replace(/<\/?(?:em|i)[^>]*>([\s\S]*?)<\/?(?:em|i)[^>]*>/gi, (_, inner) => `*${inline(inner)}*`);
-  // inline code
-  text = text.replace(/`([^`]+)`/g, (_, code) => `\`${code}\``); // already escaped
-  text = text.replace(/(?<!`)<code(?:[^>]*)?>([\s\S]*?)<\/code>(?!`)/gi, (_, code) => {
-    // strip any nested HTML inside code
-    const stripped = stripTags(code);
-    return `\`${stripped}\``;
-  });
-  // line break: <br>
-  text = text.replace(/<br\s*\/?>/gi, '  \n');
-  // strip remaining tags
-  text = stripTags(text);
-  return text;
-}
-
-/** Convert an ordered list item (li) block to Markdown */
-function convertOl(html: string): string {
-  const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
-  return items
-    .map((item, i) => {
-      // handle nested ol/ul
-      const content = inline(item.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1'));
-      const nested = convertListContent(item);
-      const lines = nested.split('\n').map((l, j) => j === 0 ? `1. ${content}` : `   ${l}`);
-      return lines.join('\n');
-    })
-    .join('\n');
-}
-
-/** Convert an unordered list item (li) block to Markdown */
-function convertUl(html: string): string {
-  const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
-  return items
-    .map(item => {
-      const content = stripTags(item.replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1')).trim();
-      const nested = convertListContent(item);
-      const lines = nested.split('\n').map((l, i) => i === 0 ? `- ${inline(content)}` : `  ${l}`);
-      return lines.join('\n');
-    })
-    .join('\n');
-}
-
-function convertListContent(html: string): string {
-  const parts: string[] = [];
-  // pull out nested ol/ul
-  let rest = html;
-  let match: RegExpMatchArray | null;
-  const listRe = /<o?l[^>]*>([\s\S]*?)<\/o?l>/gi;
-  while ((match = rest.match(listRe)) !== null) {
-    const before = rest.slice(0, match.index!);
-    if (before.trim()) parts.push(inline(before));
-    const listContent = match[0];
-    if (listContent.startsWith('<ol')) parts.push(convertOl(listContent));
-    else parts.push(convertUl(listContent));
-    rest = rest.slice(match.index! + match[0].length);
+function findCloseIdx(tokens: Token[], openIdx: number, tagName: string): number {
+  let depth = 0;
+  for (let i = openIdx; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type !== 'tag') continue;
+    if (t.name === tagName && !t.closing && !t.selfClosing) depth++;
+    if (t.name === tagName && t.closing) { depth--; if (depth <= 0) return i; }
   }
-  if (rest.trim()) parts.push(inline(rest));
-  return parts.join('\n');
+  return tokens.length;
 }
 
-/** Convert a <table> element to Markdown */
+function stripInline(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c)))
+    .replace(/[ \t]+/g, ' ')
+    .replace(/^[ \t]+/, '').replace(/[ \t]+$/, '')
+    .trim();
+}
+
+// ---------------------------------------------------------------------------
+// Inline element processing
+// ---------------------------------------------------------------------------
+function inlineHtml(html: string): string {
+  // Links
+  html = html.replace(/<a[^>]+href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
+    (_m, _q, href, label) => `[${stripInline(label)}](${href})`);
+  // Bold+italic nested
+  html = html.replace(/<(strong|b)[^>]*>\s*<(em|i)[^>]*>([\s\S]*?)<\/\2>\s*<\/\1>/gi,
+    (_m, _o, _i, c) => `***${c}***`);
+  html = html.replace(/<(em|i)[^>]*>\s*<(strong|b)[^>]*>([\s\S]*?)<\/\2>\s*<\/\1>/gi,
+    (_m, _o, _i, c) => `***${c}***`);
+  // Bold
+  html = html.replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi,
+    (_m, _t, c) => `**${c}**`);
+  // Italic
+  html = html.replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi,
+    (_m, _t, c) => `*${c}*`);
+  // br, strip remaining tags, decode
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<\/?[a-zA-Z][^>]*>/g, ' ');
+  html = decodeEntities(html);
+  html = html.replace(/[ \t]+/g, ' ').replace(/^[ \t]+/gm, '').replace(/[ \t]+$/gm, '');
+  html = html.replace(/\n\s+/g, '\n').replace(/\s+\n/g, '\n');
+  return html.trim();
+}
+
+// ---------------------------------------------------------------------------
+// List processing using token-level approach (avoids regex nesting issues)
+// ---------------------------------------------------------------------------
+
+/** Extract inline text from a token array, ignoring block-level children but keeping inline tags. */
+function tokensToInline(tokens: Token[]): string {
+  let html = '';
+  for (const t of tokens) {
+    if (t.type === 'text') html += t.content;
+    else if (!['ol','ul','li','table','tablehead','tablebody','tr','td','th','blockquote','pre','hr','code','p','br'].includes(t.name)) {
+      html += t.full;
+    } else if (t.name === 'br') {
+      html += '\n';
+    }
+  }
+  return inlineHtml(html);
+}
+
+/** Process an <ol> token block, recursively handling nested lists. */
+function processOlTokens(olTokens: Token[], lines: string[]): void {
+  const liGroups: {content: Token[]; nested: Array<{tokens: Token[]; isOl: boolean}>}[] = [];
+  let i = 0;
+  while (i < olTokens.length) {
+    if (olTokens[i].type === 'tag' && olTokens[i].name === 'li' && !olTokens[i].closing) {
+      const ci = findCloseIdx(olTokens, i, 'li');
+      const liTokens = olTokens.slice(i, ci + 1);
+      // Extract nested ol/ul inside this li
+      const nested: Array<{tokens: Token[]; isOl: boolean}> = [];
+      const inlineTokens: Token[] = [];
+      let j = 1; // skip opening <li>
+      while (j < liTokens.length - 1) { // skip closing </li>
+        if (liTokens[j].type === 'tag' && !liTokens[j].closing && (liTokens[j].name === 'ol' || liTokens[j].name === 'ul')) {
+          const nci = findCloseIdx(liTokens, j, liTokens[j].name);
+          nested.push({ tokens: liTokens.slice(j, nci + 1), isOl: liTokens[j].name === 'ol' });
+          j = nci + 1;
+        } else if (liTokens[j].type === 'tag' && liTokens[j].name === 'li') {
+          j++; // skip inner <li> tags
+        } else {
+          inlineTokens.push(liTokens[j]);
+          j++;
+        }
+      }
+      liGroups.push({ content: inlineTokens, nested });
+      i = ci + 1;
+    } else {
+      i++;
+    }
+  }
+  // We handle numbering at the caller to get proper 1,2,3... for top-level
+  const results: Array<{content: string; nested: Array<{tokens: Token[]; isOl: boolean}>}> = [];
+  for (const g of liGroups) {
+    results.push({ content: tokensToInline(g.content), nested: g.nested });
+  }
+  // Emit lines
+  for (let idx = 0; idx < results.length; idx++) {
+    const r = results[idx];
+    const num = idx + 1;
+    const indent = '   ';
+    lines.push(`${num}. ${r.content}`);
+    for (const n of r.nested) {
+      if (n.isOl) processOlTokensIndent(n.tokens, lines, indent);
+      else processUlTokensIndent(n.tokens, lines, indent);
+    }
+  }
+}
+
+function processUlTokens(ulTokens: Token[], lines: string[]): void {
+  processUlTokensIndent(ulTokens, lines, '');
+}
+
+function processOlTokensIndent(olTokens: Token[], lines: string[], prefix: string): void {
+  const results: Array<{content: string; nested: Array<{tokens: Token[]; isOl: boolean}>}> = [];
+  let i = 0;
+  while (i < olTokens.length) {
+    if (olTokens[i].type === 'tag' && olTokens[i].name === 'li' && !olTokens[i].closing) {
+      const ci = findCloseIdx(olTokens, i, 'li');
+      const liTokens = olTokens.slice(i, ci + 1);
+      const nested: Array<{tokens: Token[]; isOl: boolean}> = [];
+      const inlineTokens: Token[] = [];
+      let j = 1;
+      while (j < liTokens.length - 1) {
+        if (liTokens[j].type === 'tag' && !liTokens[j].closing && (liTokens[j].name === 'ol' || liTokens[j].name === 'ul')) {
+          const nci = findCloseIdx(liTokens, j, liTokens[j].name);
+          nested.push({ tokens: liTokens.slice(j, nci + 1), isOl: liTokens[j].name === 'ol' });
+          j = nci + 1;
+        } else if (liTokens[j].type === 'tag' && liTokens[j].name === 'li') {
+          j++;
+        } else {
+          inlineTokens.push(liTokens[j]);
+          j++;
+        }
+      }
+      results.push({ content: tokensToInline(inlineTokens), nested });
+      i = ci + 1;
+    } else {
+      i++;
+    }
+  }
+  for (let idx = 0; idx < results.length; idx++) {
+    const r = results[idx];
+    const num = idx + 1;
+    lines.push(`${prefix}${num}. ${r.content}`);
+    for (const n of r.nested) {
+      if (n.isOl) processOlTokensIndent(n.tokens, lines, prefix + '   ');
+      else processUlTokensIndent(n.tokens, lines, prefix + '  ');
+    }
+  }
+}
+
+function processUlTokensIndent(ulTokens: Token[], lines: string[], prefix: string): void {
+  const results: Array<{content: string; nested: Array<{tokens: Token[]; isOl: boolean}>}> = [];
+  let i = 0;
+  while (i < ulTokens.length) {
+    if (ulTokens[i].type === 'tag' && ulTokens[i].name === 'li' && !ulTokens[i].closing) {
+      const ci = findCloseIdx(ulTokens, i, 'li');
+      const liTokens = ulTokens.slice(i, ci + 1);
+      const nested: Array<{tokens: Token[]; isOl: boolean}> = [];
+      const inlineTokens: Token[] = [];
+      let j = 1;
+      while (j < liTokens.length - 1) {
+        if (liTokens[j].type === 'tag' && !liTokens[j].closing && (liTokens[j].name === 'ol' || liTokens[j].name === 'ul')) {
+          const nci = findCloseIdx(liTokens, j, liTokens[j].name);
+          nested.push({ tokens: liTokens.slice(j, nci + 1), isOl: liTokens[j].name === 'ol' });
+          j = nci + 1;
+        } else if (liTokens[j].type === 'tag' && liTokens[j].name === 'li') {
+          j++;
+        } else {
+          inlineTokens.push(liTokens[j]);
+          j++;
+        }
+      }
+      results.push({ content: tokensToInline(inlineTokens), nested });
+      i = ci + 1;
+    } else {
+      i++;
+    }
+  }
+  for (const r of results) {
+    lines.push(`${prefix}- ${r.content}`);
+    for (const n of r.nested) {
+      if (n.isOl) processOlTokensIndent(n.tokens, lines, prefix + '  ');
+      else processUlTokensIndent(n.tokens, lines, prefix + '  ');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Table conversion
+// ---------------------------------------------------------------------------
 function convertTable(html: string): string {
-  const rows: string[] = [];
-  const headerCells = [...html.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m => norm(inline(m[1])));
+  const headerCells = [...html.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m => stripInline(m[1]));
   const bodyRows: string[][] = [];
-  const rowMatches = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  for (const rowMatch of rowMatches) {
-    const cells = [...rowMatch[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => norm(inline(m[1])));
-    if (cells.length > 0) bodyRows.push(cells);
+  for (const rm of [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)]) {
+    const cells = [...rm[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => stripInline(m[1]));
+    if (cells.length) bodyRows.push(cells);
   }
-  if (headerCells.length > 0) {
-    rows.push(`| ${headerCells.join(' | ')} |`);
-    rows.push(`| ${headerCells.map(() => '---').join(' | ')} |`);
+  const rows: string[] = [];
+  if (headerCells.length) {
+    rows.push('| ' + headerCells.join(' | ') + ' |');
+    rows.push('| ' + headerCells.map(() => '---').join(' | ') + ' |');
   }
-  for (const cells of bodyRows) {
-    rows.push(`| ${cells.join(' | ')} |`);
-  }
+  for (const cells of bodyRows) rows.push('| ' + cells.join(' | ') + ' |');
   return rows.join('\n');
 }
 
-/** Recursively convert an HTML snippet to Markdown blocks.
- *  Returns an array of top-level Markdown lines. */
-function htmlToMd(html: string): string[] {
-  const lines: string[] = [];
+// ---------------------------------------------------------------------------
+// Block-level converter
+// ---------------------------------------------------------------------------
+function htmlToMd(tokens: Token[]): string[] {
+  const out: string[] = [];
   let pos = 0;
-  const tokens = tokenise(html);
 
   while (pos < tokens.length) {
-    const token = tokens[pos];
+    const t = tokens[pos];
+    if (t.type === 'text') { pos++; continue; }
+    if (t.closing) { pos++; continue; }
+    const tag = t.name;
 
-    if (!token.startsWith('<')) {
-      // text node
-      const text = token.trim();
-      if (text) lines.push(text);
+    if (/^h[1-6]$/.test(tag)) {
+      const ci = findCloseIdx(tokens, pos, tag);
+      const inner = tokens.slice(pos + 1, ci).map(x => x.type === 'text' ? x.content : x.full).join('');
+      out.push('#'.repeat(parseInt(tag[1])) + ' ' + inlineHtml(inner));
+      pos = ci + 1;
+    } else if (tag === 'hr') {
+      out.push('---', ''); pos++;
+    } else if (tag === 'ol') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      processOlTokens(tokens.slice(pos + 1, ci), out);
+      out.push('');
+      pos = ci + 1;
+    } else if (tag === 'ul') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      processUlTokens(tokens.slice(pos + 1, ci), out);
+      out.push('');
+      pos = ci + 1;
+    } else if (tag === 'table') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      const inner = tokens.slice(pos + 1, ci).map(x => x.type === 'text' ? x.content : x.full).join('');
+      out.push(convertTable(inner), '');
+      pos = ci + 1;
+    } else if (tag === 'tbody' || tag === 'thead' || tag === 'tr' || tag === 'td' || tag === 'th') {
       pos++;
-      continue;
-    }
-
-    const tagLower = token.slice(1, token.length - 1).replace(/\s.*$/, '').toLowerCase();
-
-    if (tagLower === 'h1') {
-      const inner = innerOf('h1', tokenise(tokens.slice(pos).join('')).join(''));
-      lines.push(`# ${inline(inner)}`);
-      // advance past this tag
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/h1/i)) pos++;
-      pos++; // skip </h1>
-    } else if (tagLower === 'h2') {
-      const inner = innerOf('h2', tokens.slice(pos).join(''));
-      lines.push(`## ${inline(inner)}`);
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/h2/i)) pos++;
-      pos++;
-    } else if (tagLower === 'h3') {
-      const inner = innerOf('h3', tokens.slice(pos).join(''));
-      lines.push(`### ${stripTags(inner)}`);
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/h3/i)) pos++;
-      pos++;
-    } else if (tagLower === 'h4') {
-      const inner = innerOf('h4', tokens.slice(pos).join(''));
-      lines.push(`#### ${stripTags(inner)}`);
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/h4/i)) pos++;
-      pos++;
-    } else if (tagLower === 'h5' || tagLower === 'h6') {
-      const inner = innerOf(tagLower, tokens.slice(pos).join(''));
-      lines.push(`##### ${stripTags(inner)}`);
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(new RegExp(`^</${tagLower}`, 'i'))) pos++;
-      pos++;
-    } else if (tagLower === 'hr') {
-      lines.push('---');
-      pos++;
-    } else if (tagLower === 'ol') {
-      const inner = innerOf('ol', tokens.slice(pos).join(''));
-      lines.push(convertOl(`<ol>${inner}</ol>`));
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/ol/i)) pos++;
-      pos++;
-    } else if (tagLower === 'ul') {
-      const inner = innerOf('ul', tokens.slice(pos).join(''));
-      lines.push(convertUl(`<ul>${inner}</ul>`));
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/ul/i)) pos++;
-      pos++;
-    } else if (tagLower === 'table') {
-      const inner = innerOf('table', tokens.slice(pos).join(''));
-      lines.push(convertTable(`<table>${inner}</table>`));
-      lines.push(''); // blank line after table
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/table/i)) pos++;
-      pos++;
-    } else if (tagLower === 'blockquote') {
-      const inner = innerOf('blockquote', tokens.slice(pos).join(''));
-      const md = inline(inner);
-      for (const l of md.split('\n')) lines.push(`> ${l}`);
-      lines.push('');
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/blockquote/i)) pos++;
-      pos++;
-    } else if (tagLower === 'p') {
-      const inner = innerOf('p', tokens.slice(pos).join(''));
-      // check if inner starts with a heading tag
-      const headingMatch = inner.match(/^<h([1-6])[^>]*>([\s\S]*)/i);
-      if (headingMatch) {
-        const lvl = headingMatch[1];
-        lines.push(`${'#'.repeat(parseInt(lvl) + 1)} ${inline(headingMatch[2])}`);
+    } else if (tag === 'blockquote') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      const inner = tokens.slice(pos + 1, ci).map(x => x.type === 'text' ? x.content : x.full).join('');
+      for (const l of inlineHtml(inner).split('\n')) out.push('> ' + l);
+      out.push(''); pos = ci + 1;
+    } else if (tag === 'p') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      const inner = tokens.slice(pos + 1, ci);
+      const rawHtml = inner.map(x => x.full).join('');
+      if (/<(h[1-6]|ol|ul|li|table|thead|tbody|tr|td|th|blockquote|pre|hr|code)\b/i.test(rawHtml)) {
+        out.push(...htmlToMd(inner).filter(l => l.trim()));
       } else {
-        const md = inline(inner);
-        if (md.trim()) {
-          lines.push(md);
-          lines.push(''); // paragraphs get blank line
-        }
+        const md = inlineHtml(inner.map(x => x.type === 'text' ? x.content : x.full).join(''));
+        if (md) out.push(md, '');
       }
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/p/i)) pos++;
-      pos++;
-    } else if (tagLower === 'code') {
-      // block-level <code> — collect until </code>
-      const codeParts: string[] = [];
+      pos = ci + 1;
+    } else if (tag === 'code') {
+      const parts: string[] = [];
       pos++;
       while (pos < tokens.length) {
-        if (tokens[pos].match(/^<\/code/i)) { pos++; break; }
-        if (!tokens[pos].startsWith('<')) codeParts.push(tokens[pos]);
+        const ct = tokens[pos];
+        if (ct.type === 'tag' && ct.name === 'code' && ct.closing) { pos++; break; }
+        if (ct.type === 'text') parts.push(ct.content);
+        else if (ct.type === 'tag' && ct.name === 'br') parts.push('\n');
         pos++;
       }
-      const codeText = decodeEntities(codeParts.join('').replace(/`/g, ''));
-      lines.push(`\`\`\`\n${codeText}\n\`\`\``);
-      lines.push('');
-    } else if (tagLower === 'div' || tagLower === 'section' || tagLower === 'article') {
-      // recurse into container elements
-      htmlToMd(innerOf(tagLower, tokens.slice(pos).join(''))).forEach(subLine => {
-        if (subLine.trim() || subLine === '') lines.push(subLine);
+      let code = decodeEntities(parts.join(''));
+      code = code.replace(/<\/?[a-zA-Z][^>]*>/g, '').trim();
+      const nl = code.indexOf('\n');
+      if (nl > 0 && nl < 20) {
+        const hint = code.slice(0, nl).trim();
+        const body = code.slice(nl + 1);
+        if (/^[a-zA-Z]+$/.test(hint) && hint.length < 15 && (body.includes('\n') || body.includes('-->'))) {
+          out.push('```' + hint, body, '```', ''); continue;
+        }
       }
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(new RegExp(`^</${tagLower}`, 'i'))) pos++;
-      pos++;
-    } else if (tagLower === 'br') {
-      lines.push('');
-      pos++;
-    } else if (tagLower === 'a') {
-      // inline <a> — handled by inline()
-      pos++;
-    } else if (tagLower === '!--') {
-      // HTML comment
-      pos++;
-    } else {
-      // unknown / skip
-      pos++;
-    }
+      if (code.includes('\n')) out.push('```', code, '```', '');
+      else out.push('`' + code + '`', '');
+    } else if (tag === 'pre') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      const code = decodeEntities(tokens.slice(pos + 1, ci).map(x => x.type === 'text' ? x.content : '').join('')).trim();
+      out.push('```', code, '```', ''); pos = ci + 1;
+    } else if (tag === 'div' || tag === 'section' || tag === 'article') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      out.push(...htmlToMd(tokens.slice(pos + 1, ci)).filter(l => l));
+      pos = ci + 1;
+    } else if (tag === 'strong' || tag === 'b' || tag === 'em' || tag === 'i') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      let buf = '';
+      for (let i = pos; i <= ci; i++) {
+        const it = tokens[i];
+        buf += it.type === 'text' ? it.content : it.full;
+      }
+      const md = inlineHtml(buf);
+      if (md) out.push(md);
+      pos = ci + 1;
+    } else if (tag === 'a') {
+      const ci = findCloseIdx(tokens, pos, tag);
+      let buf = '';
+      for (let i = pos; i <= ci; i++) buf += tokens[i].type === 'text' ? tokens[i].content : tokens[i].full;
+      const md = inlineHtml(buf);
+      if (md) out.push(md);
+      pos = ci + 1;
+    } else if (tag === 'br') {
+      out.push(''); pos++;
+    } else if (tag === '!--') { pos++; }
+    else { pos++; }
   }
-
-  return lines;
+  return out;
 }
 
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
-export function convertHtmlToMarkdown(
-  html: string,
-  id: string,
-): ConvertResult | null {
-  // Title
-  const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const title = titleMatch ? stripTags(titleMatch[1]).trim() : '';
+export function convertHtmlToMarkdown(html: string, id: string): ConvertResult | null {
+  const tm = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const title = tm ? decodeEntities(tm[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim() : '';
   if (!title) return null;
 
-  // Tags
-  const tagMatches = [...html.matchAll(/<span class=["']tag["'][^>]*>([\s\S]*?)<\/span>/gi)];
-  let tags: string[] = tagMatches
-    .map(m => stripTags(m[1]).trim())
-    .filter(t => t.length > 0 && t !== 'null');
+  const tms = [...html.matchAll(/<span\s+class=["']tag["'][^>]*>([\s\S]*?)<\/span>/gi)];
+  let tags = tms.map(m => decodeEntities(m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim()).filter(x => x && x !== 'null');
   const type = tags[0] || '其他';
-  if (tags.length === 0) tags = [type];
+  if (!tags.length) tags = [type];
 
-  // Date
   let date = '';
-  const dateMatch = html.match(/创建于[：:]\s*(\d{4}-\d{2}-\d{2})/);
-  if (dateMatch) date = dateMatch[1];
+  const dm = html.match(/创建于[：:]\s*(\d{4}-\d{2}-\d{2})/);
+  if (dm) date = dm[1];
 
-  // Body: extract content after <hr>
-  const lastHrIdx = html.lastIndexOf('<hr');
-  const afterHtml = lastHrIdx >= 0 ? html.slice(lastHrIdx) : html;
-  const cleanAfter = afterHtml
+  const hri = html.lastIndexOf('<hr');
+  let bodyHtml = (hri >= 0 ? html.slice(hri) : html)
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<div[^>]*id\s*=["']?jsonData["']?[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<audio[\s\S]*?<\/audio>/gi, '')
-    .replace(/<source[\s\S]*?\/?>/gi, '');
-
-  // Remove the title <h1> from body if it appears
-  const bodyHtml = cleanAfter
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/(<div[^>]*>)\s*<h1[^>]*>[\s\S]*?<\/h1>/gi, '$1')
-    .replace(/<p>\s*<h1[^>]*>[\s\S]*?<\/h1>\s*<\/p>/gi, '')
+    .replace(/<audio[^>]*>[\s\S]*?<\/audio>/gi, '')
+    .replace(/<source[^>]*\/?>/gi, '')
     .replace(/<div[^>]*class=["']note["'][^>]*>/gi, '')
-    .replace(/<div[^>]*class=["']note-container["'][^>]*>/gi, '');
+    .replace(/<div[^>]*class=["']note-container["'][^>]*>/gi, '')
+    .replace(/<\/div>/gi, '');
 
-  // Extract "原文：" link if present
-  const attachmentMatch = bodyHtml.match(/<div class=["']attachment["'][^>]*>([\s\S]*?)<\/div>/i);
   let attachmentLine = '';
-  if (attachmentMatch) {
-    const linkMatch = attachmentMatch[1].match(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
-    if (linkMatch) {
-      const href = linkMatch[1];
-      const label = stripTags(linkMatch[2]).trim();
-      attachmentLine = `原文：[${label}](${href})`;
-    }
+  const am = bodyHtml.match(/<div\s+class=["']attachment["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (am) {
+    const lm = am[1].match(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (lm) attachmentLine = `原文：[${decodeEntities(lm[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim()}](${lm[1]})`;
   }
+  bodyHtml = bodyHtml.replace(/<div[^>]*class=["']attachment["'][^>]*>[\s\S]*?<\/div>/gi, '').trim();
 
-  // Strip attachment div from body
-  const bodyWithoutAttachment = bodyHtml
-    .replace(/<div[^>]*class=["']attachment["'][^>]*>[\s\S]*?<\/div>/gi, '')
-    .trim();
+  const tokens = tokenise(bodyHtml);
+  let bodyLines = htmlToMd(tokens);
 
-  // Convert HTML to Markdown lines
-  const rawLines = htmlToMd(bodyWithoutAttachment);
-
-  // Build body: attachment + non-empty lines, collapsed double blank lines
-  const bodyLines: string[] = [];
-  if (attachmentLine) bodyLines.push(attachmentLine, '');
-  let lastWasBlank = false;
-  for (const line of rawLines) {
-    const trimmed = line.trim();
-    if (trimmed === '') {
-      if (!lastWasBlank) bodyLines.push('');
-      lastWasBlank = true;
-    } else {
-      bodyLines.push(trimmed);
-      lastWasBlank = false;
-    }
+  // Normalize blank lines
+  const cleaned: string[] = [];
+  let prevBlank = false;
+  for (const l of bodyLines) {
+    if (!l.trim()) { if (!prevBlank && cleaned.length) cleaned.push(''); prevBlank = true; }
+    else { cleaned.push(l); prevBlank = false; }
   }
-  // Remove leading/trailing blank lines
-  while (bodyLines.length > 0 && bodyLines[0] === '') bodyLines.shift();
-  while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1] === '') bodyLines.pop();
+  while (cleaned.length && !cleaned[0].trim()) cleaned.shift();
+  while (cleaned.length && !cleaned[cleaned.length - 1].trim()) cleaned.pop();
+  if (attachmentLine) cleaned.unshift(attachmentLine, '');
 
-  // Image refs
-  const imgMatches = [...html.matchAll(/src=["']([^"']+)["']/gi)];
   const imageRefs: string[] = [];
-  for (const m of imgMatches) {
-    const src = m[1];
-    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(src)) {
-      imageRefs.push(src);
-    }
+  for (const m of html.matchAll(/src=["']([^"']+)["']/gi)) {
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(m[1])) imageRefs.push(m[1]);
   }
 
-  return {
-    frontmatter: {
-      id,
-      title,
-      date,
-      type,
-      tags,
-      domain: '',
-      connections: [],
-    },
-    body: bodyLines.join('\n'),
-    imageRefs,
-  };
+  return { frontmatter: { id, title, date, type, tags, domain: '', connections: [] }, body: cleaned.join('\n'), imageRefs };
 }
 
-export function buildMarkdownString(result: ConvertResult): string {
-  const fm = result.frontmatter;
-  const lines: string[] = ['---'];
-  lines.push(`id: "${fm.id}"`);
-  lines.push(`title: "${fm.title.replace(/"/g, '\\"')}"`);
-  lines.push(`type: "${fm.type}"`);
-  lines.push(`tags: [${fm.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
-  if (fm.domain) lines.push(`domain: "${fm.domain}"`);
-  if (fm.date) lines.push(`date: "${fm.date}"`);
-  if (fm.connections.length > 0) {
+export function buildMarkdownString(r: ConvertResult): string {
+  const f = r.frontmatter;
+  const lines = ['---', `id: "${f.id}"`, `title: "${f.title.replace(/"/g, '\\"')}"`, `type: "${f.type}"`];
+  lines.push(`tags: [${f.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
+  if (f.domain) lines.push(`domain: "${f.domain}"`);
+  if (f.date) lines.push(`date: "${f.date}"`);
+  if (f.connections.length) {
     lines.push('connections:');
-    for (const c of fm.connections) {
-      lines.push(`  - noteId: "${c.noteId}"`);
-      lines.push(`    score: ${c.score}`);
-      lines.push(`    type: "${c.type}"`);
-    }
+    for (const c of f.connections) lines.push(`  - noteId: "${c.noteId}"`, `    score: ${c.score}`, `    type: "${c.type}"`);
   }
-  if (fm.x !== undefined && fm.y !== undefined) {
-    lines.push(`x: ${fm.x}`);
-    lines.push(`y: ${fm.y}`);
-  }
-  if (fm.ai_summary) {
-    lines.push('ai_summary: |');
-    for (const line of fm.ai_summary.split('\n')) {
-      lines.push(`  ${line}`);
-    }
-  }
-  lines.push('---', '', result.body);
-
-  if (result.imageRefs.length > 0) {
-    lines.push('');
-    for (const ref of result.imageRefs) {
-      const fname = path.basename(ref);
-      lines.push(`![](images/${fm.id}/${fname})`);
-    }
-  }
-
+  if (f.x !== undefined) { lines.push(`x: ${f.x}`); lines.push(`y: ${f.y}`); }
+  if (f.ai_summary) { lines.push('ai_summary: |'); for (const l of f.ai_summary.split('\n')) lines.push(`  ${l}`); }
+  lines.push('---', '', r.body);
+  if (r.imageRefs.length) { lines.push(''); for (const ref of r.imageRefs) lines.push(`![](images/${f.id}/${path.basename(ref)})`); }
   return lines.join('\n');
 }

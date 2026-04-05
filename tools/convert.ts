@@ -2,15 +2,16 @@
 // tools/convert.ts
 // 将 Get笔记 HTML 导出转换为 Markdown + graph-index.json
 
+import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseHtmlFile } from '../src/parser/index.js';
-import { buildNoteConnections } from '../src/linker/semantic.js';
-import { projectTo2D } from '../src/linker/projector.js';
-import { Note } from '../src/types.js';
-import { convertHtmlToMarkdown, buildMarkdownString } from './markdown.js';
-import { buildGraphIndex, NoteIndexEntry } from './indexer.js';
-import { NoteMetadata } from './markdown.js';
+import { parseHtmlFile } from '../dist/parser/index.js';
+import { buildNoteConnections } from '../dist/linker/semantic.js';
+import { projectTo2D } from '../dist/linker/projector.js';
+import { Note } from '../dist/types.js';
+import { convertHtmlToMarkdown, buildMarkdownString } from '../web/tools/markdown.js';
+import { buildGraphIndex, NoteIndexEntry } from '../web/tools/indexer.js';
+import { NoteMetadata } from '../web/tools/markdown.js';
 
 export function inferDomain(tags: string[]): string {
   const tagStr = tags.join('');
