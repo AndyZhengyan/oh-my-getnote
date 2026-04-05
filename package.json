@@ -5,10 +5,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "cd web && npx eslint .",
-    "build": "cd web && npx next build"
+    "build": "cd web && npx next build",
+    "backfill": "npx tsx scripts/backfill.ts"
   },
   "dependencies": {
-    "@lancedb/lancedb": "^0.27.2"
+    "@lancedb/lancedb": "^0.27.2",
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
     "typescript": "^6.0.2"
