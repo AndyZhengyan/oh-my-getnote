@@ -11,6 +11,12 @@ export async function POST(req: NextRequest) {
     if (!id || !text) {
       return NextResponse.json({ error: 'id and text are required' }, { status: 400 });
     }
+    if (typeof id !== 'string' || typeof text !== 'string') {
+      return NextResponse.json({ error: 'id and text must be strings' }, { status: 400 });
+    }
+    if (text.length > 50000) {
+      return NextResponse.json({ error: 'text too long (max 50KB)' }, { status: 400 });
+    }
 
     // If vector not provided, compute it
     let { vector } = body;

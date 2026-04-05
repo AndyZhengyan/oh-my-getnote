@@ -8,29 +8,40 @@ const TABLE_NAME = 'notes';
 
 let db: Connection | null = null;
 let table: Table | null = null;
+let initPromise: Promise<Table> | null = null;
+
+const UUID_REGEX = /^[a-f0-9-]+$/i;
 
 async function getTable(): Promise<Table> {
   if (table) return table;
-  db = await connect(DB_PATH);
-  const tables = await db.tableNames();
-  if (tables.includes(TABLE_NAME)) {
-    table = await db.openTable(TABLE_NAME);
-  } else {
-    // Create with dummy row, delete it, then create index
-    table = await db.createTable(TABLE_NAME, [
-      {
-        id: '__init__',
-        title: '',
-        type: '',
-        text: '',
-        vector: new Float32Array(768),
-        createdAt: 0,
-      },
-    ]);
-    await table.delete('id = "__init__"');
-    await table.createIndex('vector', { config: Index.ivfFlat({ distanceType: 'cosine' }) });
+  if (!initPromise) {
+    initPromise = (async () => {
+      db = await connect(DB_PATH);
+      const tables = await db.tableNames();
+      if (tables.includes(TABLE_NAME)) {
+        table = await db.openTable(TABLE_NAME);
+      } else {
+        table = await db.createTable(TABLE_NAME, [
+          {
+            id: '__init__',
+            title: '',
+            type: '',
+            text: '',
+            vector: new Float32Array(768),
+            createdAt: 0,
+          },
+        ]);
+        await table.delete('id = "__init__"');
+        try {
+          await table.createIndex('vector', { config: Index.ivfFlat({ distanceType: 'cosine' }) });
+        } catch {
+          // Index creation may fail on fresh DB with no data — table still usable
+        }
+      }
+      return table;
+    })();
   }
-  return table;
+  return initPromise;
 }
 
 export interface NoteVector {
@@ -44,6 +55,7 @@ export interface NoteVector {
 
 /** Store a single note vector. Idempotent (can be called repeatedly for same id). */
 export async function storeNote(note: NoteVector): Promise<void> {
+  if (!UUID_REGEX.test(note.id)) throw new Error(`Invalid note id: ${note.id}`);
   const t = await getTable();
   // Idempotent: delete existing row if present, then add
   const exists = await noteExists(note.id);
@@ -92,6 +104,7 @@ export async function noteCount(): Promise<number> {
 
 /** Check whether a note id already exists in the store. */
 export async function noteExists(id: string): Promise<boolean> {
+  if (!UUID_REGEX.test(id)) return false;
   const t = await getTable();
   const results = await t.query().where(`id = '${id.replace(/'/g, "''")}'`).limit(1).toArray();
   return results.length > 0;
