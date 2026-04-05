@@ -11,6 +11,7 @@ export default function Toolbar() {
     setDomainFilter, setTypeFilter, setSearchQuery,
     trailRecording, startTrail, saveTrail, finishTrail,
     selectNode,
+    highlightedTrailId, stopTrailPlayback,
   } = useGraphStore();
 
   const handleTrailClick = () => {
@@ -101,8 +102,8 @@ export default function Toolbar() {
             onChange={e => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              background: 'rgba(0,0,0,0.04)',
-              border: '1px solid transparent',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               color: 'var(--text-primary)',
               padding: '5px 10px 5px 32px',
@@ -113,14 +114,14 @@ export default function Toolbar() {
               transition: 'border-color 0.15s, box-shadow 0.15s',
             }}
             onFocus={e => {
-              e.target.style.borderColor = 'var(--border-focus)';
+              e.target.style.borderColor = 'var(--accent)';
               e.target.style.boxShadow = '0 0 0 3px var(--accent-light)';
               e.target.style.background = '#fff';
             }}
             onBlur={e => {
-              e.target.style.borderColor = 'transparent';
+              e.target.style.borderColor = 'var(--border)';
               e.target.style.boxShadow = 'none';
-              e.target.style.background = 'rgba(0,0,0,0.04)';
+              e.target.style.background = 'var(--bg-elevated)';
             }}
           />
         </div>
@@ -134,8 +135,8 @@ export default function Toolbar() {
           value={domainFilter}
           onChange={e => setDomainFilter(e.target.value)}
           style={{
-            background: 'rgba(0,0,0,0.04)',
-            border: '1px solid transparent',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             color: 'var(--text-secondary)',
             padding: '4px 6px',
@@ -153,8 +154,8 @@ export default function Toolbar() {
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
           style={{
-            background: 'rgba(0,0,0,0.04)',
-            border: '1px solid transparent',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             color: 'var(--text-secondary)',
             padding: '4px 6px',
@@ -200,6 +201,29 @@ export default function Toolbar() {
           <Route size={12} />
           {trailRecording ? '结束' : '轨迹'}
         </button>
+
+        {highlightedTrailId && (
+          <button
+            onClick={stopTrailPlayback}
+            title="停止轨迹高亮"
+            style={{
+              background: 'var(--accent-light)',
+              border: '1px solid var(--accent-mid)',
+              borderRadius: 6,
+              color: 'var(--accent)',
+              padding: '4px 10px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              transition: 'all 0.12s',
+            }}
+          >
+            停止高亮
+          </button>
+        )}
 
         <button
           onClick={handleReset}

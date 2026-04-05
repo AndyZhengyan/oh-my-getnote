@@ -3,6 +3,7 @@
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
 
@@ -81,7 +82,7 @@ function getNodeVisual(level: NodeLevel) {
     case 'focused': return { alpha: 1.0, rBase: 8, rScale: 1.0, ghost: false };
     case 'level1':  return { alpha: 0.85, rBase: 5, rScale: 1.0, ghost: false };
     case 'level2':  return { alpha: 0.5, rBase: 4, rScale: 0.85, ghost: false };
-    case 'ghost':    return { alpha: 0.04, rBase: 2, rScale: 0.5, ghost: true };
+    case 'ghost':    return { alpha: 0.06, rBase: 2, rScale: 0.5, ghost: true };
     default:         return { alpha: 0.85, rBase: 3, rScale: 1.0, ghost: false };
   }
 }
@@ -91,12 +92,12 @@ export default function ForceGraph() {
     graphIndex, domainFilter, typeFilter, searchQuery,
     selectedNodeId, selectNode,
     focusedNodeId, focusedNeighborIds, focusMode,
-    currentScale, setCurrentScale, focusNode, setFocusMode,
+    setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<any>(null);
+  const fgRef = useRef<ForceGraphMethods<NodeObject, LinkObject>>(undefined);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
@@ -198,6 +199,7 @@ export default function ForceGraph() {
     setTooltip(null);
   }, []);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleZoom = useCallback((transform: { k: number }) => {
     requestAnimationFrame(() => {
       setCurrentScale(Math.min(transform.k, MAX_ZOOM));
@@ -210,9 +212,9 @@ export default function ForceGraph() {
     if (fgRef.current && nodes.length > 0) {
       const checkZoom = () => {
         if (!fgRef.current) return;
-        const currentTransform = fgRef.current.zoom();
-        if (currentTransform.k > MAX_ZOOM) {
-          fgRef.current.zoom(800, MAX_ZOOM);
+        const currentScaleVal = fgRef.current.zoom();
+        if (currentScaleVal > MAX_ZOOM) {
+          fgRef.current.zoom(MAX_ZOOM, 800);
         }
       };
       setTimeout(checkZoom, 1200);
@@ -267,8 +269,22 @@ export default function ForceGraph() {
 
           ctx.globalAlpha = visual.alpha;
 
-          // Halo
-          if (level === 'focused' || n.id === selectedNodeId) {
+          // Breathing glow for right-click focused nodes (restored from 633061d)
+          if (level === 'focused') {
+            const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 500);
+            const glowR = r * (2.5 + pulse * 1.5);
+            const grad = ctx.createRadialGradient(n.x, n.y, r * 0.8, n.x, n.y, glowR);
+            grad.addColorStop(0, `rgba(0,245,255,${0.15 + pulse * 0.2})`);
+            grad.addColorStop(0.5, `rgba(0,245,255,${0.05 + pulse * 0.1})`);
+            grad.addColorStop(1, 'rgba(0,245,255,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Static halo for selected nodes
+          if (n.id === selectedNodeId) {
             const haloR = r * 3.5;
             const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, haloR);
             grad.addColorStop(0, 'rgba(124,58,237,0.22)');
@@ -382,7 +398,7 @@ export default function ForceGraph() {
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid var(--border)',
             borderRadius: 10,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            boxShadow: 'var(--shadow-md)',
             padding: '10px 14px',
             maxWidth: 240,
             zIndex: 300,

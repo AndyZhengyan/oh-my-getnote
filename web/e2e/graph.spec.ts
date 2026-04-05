@@ -52,16 +52,18 @@ test.describe('Memex 2.0 知识图谱', () => {
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
     const box = await canvas.boundingBox();
-    expect(box?.width!).toBeGreaterThan(100);
-    expect(box?.height!).toBeGreaterThan(100);
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThan(100);
+    expect(box!.height).toBeGreaterThan(100);
   });
 
   // ── TC-2: Canvas 渲染 ─────────────────────────────────────────────────
   test('TC-2: Canvas 元素存在且尺寸有效', async ({ page }) => {
     const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
-    expect(box?.width!).toBeGreaterThan(100);
-    expect(box?.height!).toBeGreaterThan(100);
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThan(100);
+    expect(box!.height).toBeGreaterThan(100);
   });
 
   // ── TC-3: Toolbar 领域筛选 ────────────────────────────────────────────
@@ -130,8 +132,9 @@ test.describe('Memex 2.0 知识图谱', () => {
   // ── TC-6: 点击节点 ────────────────────────────────────────────────────
   test('TC-6: 点击 canvas，LeftNav aside 仍然存在', async ({ page }) => {
     const canvas = page.locator('canvas');
-    const box = await canvas.boundingBox()!;
-    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.click(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
     await page.waitForTimeout(1500);
     await expect(page.locator('aside').first()).toBeVisible();
   });

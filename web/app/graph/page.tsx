@@ -25,6 +25,7 @@ export default function GraphPage() {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: '100vh', color: 'var(--text-muted)', fontSize: 14,
+        background: 'var(--bg-base)',
       }}>
         加载中…
       </div>
@@ -32,13 +33,16 @@ export default function GraphPage() {
   }
 
   return (
-    <main>
+    <main style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
       <Toolbar />
       <LeftNav />
+      {/* 图谱画布区域：点阵背景 */}
       <div style={{
-        marginLeft: 280,
-        marginTop: 52,
-        height: 'calc(100vh - 52px)',
+        marginLeft: 308,
+        height: 'calc(100vh - 14px)',
+        backgroundImage: 'radial-gradient(circle, #D1D5DB 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+        backgroundPosition: '14px 78px',
       }}>
         <ForceGraph />
       </div>

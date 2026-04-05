@@ -40,6 +40,7 @@ export interface Trail {
 /** Simple event bus for graph operations */
 let _resetFn: (() => void) | null = null;
 let _heatFn: (() => void) | null = null;
+let _trailAnimTimer: ReturnType<typeof setTimeout> | null = null;
 export function registerGraphReset(fn: () => void) { _resetFn = fn; }
 export function unregisterGraphReset() { _resetFn = null; }
 export function registerGraphHeat(fn: () => void) { _heatFn = fn; }
@@ -64,6 +65,7 @@ interface GraphState {
   savedTrails: Trail[];
   highlightedTrailId: string | null;
   highlightedTrailNodeIds: string[];
+  _trailAnimPlaying: boolean;
   setGraphIndex: (index: GraphIndex) => void;
   setDomainFilter: (domain: string) => void;
   setTypeFilter: (type: string) => void;
@@ -83,7 +85,6 @@ interface GraphState {
 }
 
 function loadFromStorage(): Trail[] {
-  if (typeof window === 'undefined') return [];
   try {
     const stored = localStorage.getItem('memex_trails');
     return stored ? JSON.parse(stored) : [];
@@ -91,7 +92,6 @@ function loadFromStorage(): Trail[] {
 }
 
 function saveToStorage(trails: Trail[]) {
-  if (typeof window === 'undefined') return;
   localStorage.setItem('memex_trails', JSON.stringify(trails.slice(0, 20)));
 }
 
@@ -101,8 +101,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   selectedNodeId: null,
   focusedNodeId: null, focusedNeighborIds: [], focusMode: false, currentScale: 1,
   trailRecording: false, currentTrail: [],
-  savedTrails: typeof window !== 'undefined' ? loadFromStorage() : [],
-  highlightedTrailId: null, highlightedTrailNodeIds: [],
+  savedTrails: [],
+  highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -112,7 +112,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const state = get();
     if (state.trailRecording && id) {
       const newTrail = [...state.currentTrail];
-      if (newTrail[newTrail.length - 1] !== id) newTrail.push(id);
+      if (!newTrail.includes(id)) newTrail.push(id);
       set({ selectedNodeId: id, currentTrail: newTrail });
     } else {
       set({ selectedNodeId: id });
@@ -160,8 +160,38 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const trail = get().savedTrails.find(t => t.id === id);
     if (!trail) return;
     const nodeIds = trail.steps.map(s => s.noteId);
-    set({ highlightedTrailId: id, highlightedTrailNodeIds: nodeIds });
+
+    // Cancel any in-progress sequential animation
+    if (_trailAnimTimer !== null) {
+      clearTimeout(_trailAnimTimer);
+      _trailAnimTimer = null;
+    }
+
+    // Sequential animation: highlight nodes one by one every 500ms
+    set({ highlightedTrailId: id, highlightedTrailNodeIds: [], _trailAnimPlaying: true });
+
+    let index = 0;
+    function step() {
+      // Guard: stop was requested or trail changed
+      const state = get();
+      if (!state._trailAnimPlaying || state.highlightedTrailId !== id) return;
+
+      if (index < nodeIds.length) {
+        set({ highlightedTrailNodeIds: nodeIds.slice(0, index + 1) });
+        index++;
+        _trailAnimTimer = setTimeout(step, 500);
+      } else {
+        _trailAnimTimer = null;
+      }
+    }
+    step();
   },
-  stopTrailPlayback: () => set({ highlightedTrailId: null, highlightedTrailNodeIds: [] }),
-  finishTrail: () => set({ trailRecording: false }),
+  stopTrailPlayback: () => {
+    if (_trailAnimTimer !== null) {
+      clearTimeout(_trailAnimTimer);
+      _trailAnimTimer = null;
+    }
+    set({ highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false });
+  },
+  finishTrail: () => set({ trailRecording: false, currentTrail: [] }),
 }));

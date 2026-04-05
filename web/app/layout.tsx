@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import 'github-markdown-css/github-markdown-light.css';
 
 export const metadata: Metadata = {
-  title: 'Memex 2.0 — 知识图谱',
-  description: 'Strategic Dark Tech 知识加速器',
+  title: 'Oh My Getnote -- by AndyZheng',
+  description: '探索GetNote知识轨迹，致敬Memex',
 };
 
 export default function RootLayout({

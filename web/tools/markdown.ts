@@ -46,11 +46,6 @@ function innerOf(tagName: string, html: string): string {
   return m ? m[1] : '';
 }
 
-/** Returns true if the string looks like an opening HTML tag */
-function isTag(token: string): boolean {
-  return /^\s*<[a-z\/!]/i.test(token);
-}
-
 /** Tokenise HTML into a flat array of "tag" | "text" tokens */
 function tokenise(html: string): string[] {
   const tokens: string[] = [];
@@ -110,8 +105,7 @@ function inline(text: string): string {
 function convertOl(html: string): string {
   const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
   return items
-    .map((item, i) => {
-      const num = i + 1;
+    .map((item) => {
       // handle nested ol/ul
       const content = inline(item.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1'));
       const nested = convertListContent(item);
@@ -284,10 +278,7 @@ function htmlToMd(html: string): string[] {
       lines.push('');
     } else if (tagLower === 'div' || tagLower === 'section' || tagLower === 'article') {
       // recurse into container elements
-      const inner = innerOf(tagLower, tokens.slice(pos).join(''));
-      const innerTokens = tokenise(inner);
-      // process inner tokens
-      for (const subLine of htmlToMd(inner)) {
+      for (const subLine of htmlToMd(innerOf(tagLower, tokens.slice(pos).join('')))) {
         if (subLine.trim() || subLine === '') lines.push(subLine);
       }
       pos++;

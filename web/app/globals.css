@@ -3,29 +3,34 @@
 @tailwind utilities;
 
 :root {
-  /* 背景 */
-  --bg-base:     #0A0B10;
-  --bg-surface:  #161B22;
-  --bg-glass:    rgba(22, 27, 34, 0.85);
-  --bg-elevated: #1C2330;
+  /* 纸墨风格：浅色主题 */
+  --bg-base:      #F9FAFB;
+  --bg-surface:   #FFFFFF;
+  --bg-glass:     rgba(255, 255, 255, 0.88);
+  --bg-elevated:  #F3F4F6;
+  --bg-muted:     #F1F3F5;
 
   /* 主色调 */
-  --primary:     #00F5FF;
-  --secondary:   #7000FF;
-  --accent-warn: #FF3B3B;
-  --accent-ok:   #00FF85;
+  --accent:       #7C3AED;
+  --accent-light: #EDE9FE;
+  --accent-mid:   #C4B5FD;
+  --accent-warn:  #EF4444;
+  --accent-ok:    #10B981;
 
   /* 文字 */
-  --text-primary:   #E0E0E0;
-  --text-secondary: #888888;
-  --text-muted:     #444444;
+  --text-primary:   #1A1C1E;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
 
   /* 边框 */
-  --border-dim:  rgba(255, 255, 255, 0.07);
-  --border-glow: rgba(0, 245, 255, 0.4);
+  --border:        #E5E7EB;
+  --border-focus:  #7C3AED;
+  --border-strong: #D1D5DB;
 
   /* 阴影 */
-  --shadow-glass: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.10);
 
   /* 圆角 */
   --radius-sm: 6px;
@@ -33,7 +38,7 @@
   --radius-lg: 14px;
 
   /* 字体 */
-  --font-ui:   system-ui, -apple-system, "SF Pro Display", sans-serif;
+  --font-ui:   system-ui, -apple-system, "SF Pro Display", Inter, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
@@ -44,13 +49,80 @@ body {
 }
 
 /* 滚动条 */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
 /* Loader2 spin safety net */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* 节点呼吸灯动画 */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Markdown 渲染优化 */
+.markdown-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.markdown-body h1 { font-size: 1.4em; font-weight: 700; margin: 1.2em 0 0.6em; color: var(--text-primary); }
+.markdown-body h2 { font-size: 1.2em; font-weight: 600; margin: 1em 0 0.5em; color: var(--text-primary); }
+.markdown-body h3 { font-size: 1.05em; font-weight: 600; margin: 0.8em 0 0.4em; color: var(--text-secondary); }
+.markdown-body p { margin: 0 0 0.8em; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0 0 0.8em; }
+.markdown-body li { margin: 0.2em 0; }
+.markdown-body blockquote {
+  border-left: 3px solid var(--accent-mid);
+  padding: 0.4em 1em;
+  margin: 0.8em 0;
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+  border-radius: 0 6px 6px 0;
+}
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--bg-muted);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: var(--accent);
+}
+.markdown-body pre {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+.markdown-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.85em;
+}
+.markdown-body a { color: var(--accent); text-decoration: none; }
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 0.9em;
+}
+.markdown-body table th, .markdown-body table td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.8em;
+  text-align: left;
+}
+.markdown-body table th { background: var(--bg-muted); font-weight: 600; }
+.markdown-body img { max-width: 100%; border-radius: 6px; }
+.markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }

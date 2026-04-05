@@ -15,3 +15,5 @@ kg-site/
 viewer.html
 graph-index.json
 notes/
+images/
+*.png

@@ -1,9 +1,9 @@
 // web/components/panels/LeftNav.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, Square } from 'lucide-react';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -25,24 +25,12 @@ const DOMAIN_COLORS: Record<string, string> = {
   '其他':               '#9CA3AF',
 };
 
-interface Trail {
-  id: string;
-  name: string;
-  createdAt: string;
-  steps: { noteId: string }[];
-}
-
 export default function LeftNav() {
-  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId } = useGraphStore();
+  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId, savedTrails, loadTrails, stopTrailPlayback } = useGraphStore();
   const [showTrails, setShowTrails] = useState(false);
-  const [trails, setTrails] = useState<Trail[]>([]);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('memex_trails');
-      if (stored) setTrails(JSON.parse(stored));
-    } catch { /* ignore */ }
-  }, []);
+  // Ensure store's savedTrails is populated on mount
+  loadTrails();
 
   if (!graphIndex) return null;
 
@@ -53,7 +41,7 @@ export default function LeftNav() {
       width: 280,
       height: 'calc(100vh - 14px)',
       position: 'fixed',
-      top: 78, // below the floating toolbar
+      top: 78,
       left: 14,
       background: 'var(--bg-surface)',
       border: '1px solid var(--border)',
@@ -136,6 +124,32 @@ export default function LeftNav() {
 
       {/* Trail history */}
       <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
+        {/* Stop button — shown while a trail is highlighted */}
+        {highlightedTrailId && (
+          <div style={{ padding: '4px 16px 4px' }}>
+            <button
+              onClick={stopTrailPlayback}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 10px',
+                background: 'var(--accent)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 12,
+                fontFamily: 'var(--font-ui)',
+                cursor: 'pointer',
+              }}
+            >
+              <Square size={10} fill="currentColor" />
+              停止高亮
+            </button>
+          </div>
+        )}
+
         <button
           onClick={() => setShowTrails(!showTrails)}
           style={{
@@ -155,17 +169,17 @@ export default function LeftNav() {
           }}
         >
           <Bookmark size={13} />
-          探索轨迹 ({trails.length})
+          探索轨迹 ({savedTrails.length})
         </button>
 
         {showTrails && (
           <div>
-            {trails.length === 0 && (
+            {savedTrails.length === 0 && (
               <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
                 暂无轨迹记录
               </div>
             )}
-            {trails.slice(0, 10).map(trail => {
+            {savedTrails.slice(0, 10).map(trail => {
               const isActive = highlightedTrailId === trail.id;
               return (
                 <div key={trail.id} style={{
@@ -222,7 +236,10 @@ function NavItem({
         fontSize: 13,
         fontFamily: 'var(--font-ui)',
         transition: 'background 0.12s, color 0.12s',
+        borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
       }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
       <span style={{
         width: 8, height: 8, borderRadius: '50%',

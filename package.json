@@ -1,0 +1,10 @@
+{
+  "name": "oh-my-getnote",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "cd web && npx eslint .",
+    "build": "cd web && npx next build"
+  }
+}

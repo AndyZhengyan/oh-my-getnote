@@ -1,5 +1,21 @@
-// web/components/panels/RightPanel.tsx
-'use client';
+// Fix markdown: add newlines before block-level syntax that got squashed into one line
+function fixMarkdownLineBreaks(body: string): string {
+  // Add newlines before common block-level markdown patterns
+  // These patterns are detected mid-text when the HTML had no <br> between blocks
+  let fixed = body;
+  // Headings: ## or # anywhere in text
+  fixed = fixed.replace(/(#{1,6}\s)/g, '\n\n$1');
+  // HR / list / blockquote at word boundaries
+  fixed = fixed.replace(/(\s)(-{3,})/g, '\n\n$2');
+  fixed = fixed.replace(/(\s)(={3,})/g, '\n\n$2');
+  fixed = fixed.replace(/(\s)([-*+]\s)/g, '\n$2');
+  fixed = fixed.replace(/(\s)(\d+\.\s)/g, '\n$2');
+  fixed = fixed.replace(/(\s)(>\s)/g, '\n$2');
+  fixed = fixed.replace(/(\s)(```)/g, '\n$2');
+  // Clean up multiple newlines
+  fixed = fixed.replace(/\n{3,}/g, '\n\n');
+  return fixed;
+}
 
 import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
@@ -163,7 +179,7 @@ export default function RightPanel() {
           )}
           {!loading && note?.body && (
             <div className="markdown-body" style={{ fontSize: isFullscreen ? 15 : 13 }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.body}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixMarkdownLineBreaks(note.body)}</ReactMarkdown>
             </div>
           )}
           {!loading && !note?.body && (
