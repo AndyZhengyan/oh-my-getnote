@@ -1,7 +1,7 @@
 // web/app/api/vector/store/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { storeNote } from '@/lib/lancedb';
-import { embedText } from '@/lib/embedding';
+import { storeNote } from '@lib/lancedb';
+import { embedText } from '@lib/embedding';
 
 export async function POST(req: NextRequest) {
   try {

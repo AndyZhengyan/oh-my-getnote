@@ -1,15 +1,16 @@
 // lib/embedding.ts
-// Reuses embedBatch from dist/linker/semantic.js (the single embedding implementation)
+// Reuses embedNotes from dist/linker/semantic.js (the single embedding implementation)
 // dist/ is compiled output — no TypeScript source exists for this module
 
 // @ts-ignore — dist has no .d.ts
-import { embedBatch } from '../dist/linker/semantic.js';
+import { embedNotes } from '../dist/linker/semantic.js';
 
 export async function embedText(text: string): Promise<number[]> {
-  const results = await embedBatch([text]);
-  return results[0];
+  const results = await embedNotes([text]);
+  return results.get(text) || [];
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  return embedBatch(texts);
+  const results = await embedNotes(texts);
+  return texts.map((t) => results.get(t) || []);
 }

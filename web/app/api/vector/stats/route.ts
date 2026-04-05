@@ -1,6 +1,6 @@
 // web/app/api/vector/stats/route.ts
 import { NextResponse } from 'next/server';
-import { noteCount } from '@/lib/lancedb';
+import { noteCount } from '@lib/lancedb';
 
 export async function GET() {
   try {

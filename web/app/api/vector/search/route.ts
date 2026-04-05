@@ -1,7 +1,7 @@
 // web/app/api/vector/search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { searchVectors } from '@/lib/lancedb';
-import { embedText } from '@/lib/embedding';
+import { searchVectors } from '@lib/lancedb';
+import { embedText } from '@lib/embedding';
 
 export async function POST(req: NextRequest) {
   try {
