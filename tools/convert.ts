@@ -13,6 +13,9 @@ import { convertHtmlToMarkdown, buildMarkdownString } from '../web/tools/markdow
 import { buildGraphIndex, NoteIndexEntry } from '../web/tools/indexer.js';
 import { NoteMetadata } from '../web/tools/markdown.js';
 
+import { storeNote, noteExists } from '../lib/lancedb.js';
+import { embedText } from '../lib/embedding.js';
+
 export function inferDomain(tags: string[]): string {
   const tagStr = tags.join('');
   if (tagStr.includes('LLM') || tagStr.includes('GPT')) {
@@ -178,6 +181,25 @@ async function main() {
   }));
   const graphIndex = buildGraphIndex(entries);
   fs.writeFileSync(indexPath, JSON.stringify(graphIndex, null, 2), 'utf8');
+
+  // 3b. Incremental LanceDB write (idempotent)
+  console.log('📚 写入 LanceDB 向量存储...');
+  let stored = 0;
+  for (const note of notes) {
+    const exists = await noteExists(note.id);
+    if (exists) continue;
+    const text = `${note.title} ${note.contentSnippet || ''}`.trim();
+    const vector = await embedText(text);
+    await storeNote({
+      id: note.id,
+      title: note.title,
+      type: note.tags[0] || '其他',
+      text,
+      vector,
+    });
+    stored++;
+  }
+  console.log(`   LanceDB 新写入：${stored} 篇`);
 
   console.log(`✅ 完成！`);
   console.log(`   笔记：${graphIndex.stats.total_notes} 篇`);
