@@ -20,7 +20,7 @@
 ### 2.1 目录结构
 
 ```
-my-getnote-kg/
+oh-my-getnote/
 ├── source/                          # 原始数据（Get笔记导出的 HTML）
 │   └── voicenotes-xxx/
 │       ├── notes/                   # HTML 文件 + 图片 + 音频
