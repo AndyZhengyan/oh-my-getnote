@@ -125,6 +125,7 @@ export default function ForceGraph() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<NodeObject, LinkObject>>(undefined);
+  const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
@@ -145,11 +146,13 @@ export default function ForceGraph() {
       if (fgRef.current) {
         fgRef.current.zoomToFit(800, 100);
         fgRef.current.d3ReheatSimulation();
+        fgRef.current.resumeAnimation();
       }
     });
     registerGraphHeat(() => {
       if (fgRef.current) {
         fgRef.current.d3ReheatSimulation();
+        fgRef.current.resumeAnimation();
       }
     });
     return () => {
@@ -163,27 +166,35 @@ export default function ForceGraph() {
   useEffect(() => {
     if (fgRef.current && nodes.length > 0 && prevNodesLen.current !== nodes.length) {
       prevNodesLen.current = nodes.length;
+      // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
         const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
         fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
         fgRef.current.zoomToFit(800, padding);
         fgRef.current.d3ReheatSimulation();
+        fgRef.current.resumeAnimation();
+        // Re-freeze after settling
+        const freezeTimer = setTimeout(() => {
+          if (fgRef.current) fgRef.current.pauseAnimation();
+        }, 2500);
+        return () => clearTimeout(freezeTimer);
       }, 100);
     }
   }, [nodes, dims]);
 
-  // Freeze force simulation after initial layout — stop it once it cools down.
-  // This prevents continuous physics calculation on 655 nodes during idle browsing.
+  // Initial pause: let simulation settle, then pause RAF loop.
+  // The canvas freezes — user can still zoom/pan smoothly (library handles transform natively).
+  // Any interaction call site calls resumeAnimation().
   useEffect(() => {
     if (!fgRef.current || nodes.length === 0) return;
-    const fg = fgRef.current as unknown as { simulation?: { stop: () => void } };
-    const freeze = () => {
-      if (fg.simulation) fg.simulation.stop();
+    const timer = setTimeout(() => {
+      if (fgRef.current) fgRef.current.pauseAnimation();
+    }, 3000);
+    return () => {
+      clearTimeout(timer);
+      if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
     };
-    // Give the simulation ~3s to settle, then freeze it
-    const timer = setTimeout(freeze, 3000);
-    return () => clearTimeout(timer);
   }, [nodes.length]);
 
   useEffect(() => {
@@ -252,6 +263,7 @@ export default function ForceGraph() {
       setCurrentScale(Math.min(transform.k, MAX_ZOOM));
     });
     setZoomState({ x: transform.x, y: transform.y, k: transform.k });
+    fgRef.current?.resumeAnimation();
   }, [setCurrentScale]);
 
   // Cap auto-zoom after nodes change — don't zoom in too much
@@ -273,10 +285,12 @@ export default function ForceGraph() {
     // Prevent selecting ghost (peripheral dimmed) nodes
     const level = levelMap.get(node.id) ?? 'peripheral';
     if (level === 'ghost') return;
+    fgRef.current?.resumeAnimation();
     selectNode(node.id);
   }, [selectNode, levelMap]);
 
   const handleNodeRightClick = useCallback((node: GraphNode) => {
+    fgRef.current?.resumeAnimation();
     focusNode(node.id);
   }, [focusNode]);
 
@@ -418,6 +432,13 @@ export default function ForceGraph() {
         }}
         onNodeClick={handleNodeClick as (node: unknown) => void}
         onNodeRightClick={handleNodeRightClick as (node: unknown) => void}
+        onNodeDrag={() => fgRef.current?.resumeAnimation()}
+        onNodeDragEnd={() => {
+          if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
+          dragEndTimerRef.current = setTimeout(() => {
+            if (fgRef.current) fgRef.current.pauseAnimation();
+          }, 2000);
+        }}
         onBackgroundClick={handleBackgroundClick as (e: MouseEvent) => void}
         onBackgroundRightClick={handleBackgroundRightClick}
         cooldownTicks={60}
