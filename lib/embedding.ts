@@ -6,11 +6,13 @@
 import { embedNotes } from '../dist/linker/semantic.js';
 
 export async function embedText(text: string): Promise<number[]> {
-  const results = await embedNotes([text]);
-  return results.get(text) || [];
+  const note = { id: 'temp', title: '', contentSnippet: text };
+  const map = await embedNotes([note]);
+  return map.get('temp') || [];
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  const results = await embedNotes(texts);
-  return texts.map((t) => results.get(t) || []);
+  const notes = texts.map((t, i) => ({ id: `tmp-${i}`, title: '', contentSnippet: t }));
+  const map = await embedNotes(notes);
+  return notes.map(n => map.get(n.id) || []);
 }
