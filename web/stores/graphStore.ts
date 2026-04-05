@@ -82,6 +82,14 @@ interface GraphState {
   playTrail: (id: string) => void;
   stopTrailPlayback: () => void;
   finishTrail: () => void;
+  // Multi-hop
+  multiHopIds: string[];
+  multiHopPanelOpen: boolean;
+  addMultiHopId: (id: string) => void;
+  removeMultiHopId: (id: string) => void;
+  setMultiHopPanelOpen: (open: boolean) => void;
+  // Internal
+  setMultiHopIds: (ids: string[]) => void;
 }
 
 function loadFromStorage(): Trail[] {
@@ -103,6 +111,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   trailRecording: false, currentTrail: [],
   savedTrails: [],
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
+  multiHopIds: [], multiHopPanelOpen: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -194,4 +203,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     set({ highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false });
   },
   finishTrail: () => set({ trailRecording: false, currentTrail: [] }),
+
+  // Multi-hop
+  addMultiHopId: (id) => set(state => ({
+    multiHopIds: state.multiHopIds.includes(id) ? state.multiHopIds : [...state.multiHopIds, id],
+  })),
+  removeMultiHopId: (id) => set(state => ({
+    multiHopIds: state.multiHopIds.filter(x => x !== id),
+  })),
+  setMultiHopPanelOpen: (open) => set({ multiHopPanelOpen: open }),
+  setMultiHopIds: (ids) => set({ multiHopIds: ids }),
 }));

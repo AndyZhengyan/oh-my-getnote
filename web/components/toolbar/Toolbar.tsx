@@ -4,6 +4,8 @@
 import { useGraphStore } from '@/stores/graphStore';
 import { triggerGraphReset } from '@/stores/graphStore';
 import { Search, Route, RotateCcw } from 'lucide-react';
+import VectorSearchButton from '@/components/vector/VectorSearchButton';
+import MultiHopPanel from '@/components/vector/MultiHopPanel';
 
 export default function Toolbar() {
   const {
@@ -57,6 +59,7 @@ export default function Toolbar() {
   })();
 
   return (
+    <>
     <header
       style={{
         position: 'fixed',
@@ -246,7 +249,11 @@ export default function Toolbar() {
           <RotateCcw size={12} />
           重置
         </button>
+
+        <VectorSearchButton />
       </div>
     </header>
+    <MultiHopPanel />
+    </>
   );
 }
