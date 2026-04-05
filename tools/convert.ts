@@ -137,7 +137,7 @@ async function main() {
     }
     console.log(`   关联计算完成`);
 
-    // 3b. PCA 降维（复用 buildNoteConnections 已计算的 embeddings）
+    // 4. PCA 降维（复用 buildNoteConnections 已计算的 embeddings）
     console.log('📐 PCA 降维...');
     const ids = notes.map(n => n.id);
     const vectors = ids.map(id => embeddings.get(id) || new Array(768).fill(0));
@@ -168,7 +168,7 @@ async function main() {
     }
   }
 
-  // 4. 生成 graph-index.json（幂等）
+  // 5. 生成 graph-index.json（幂等）
   const indexPath = path.join(outDir, 'graph-index.json');
   console.log('🗂️  生成 graph-index.json...');
   const entries: NoteIndexEntry[] = Array.from(metadataMap.entries()).map(([id, meta]) => ({
@@ -182,7 +182,7 @@ async function main() {
   const graphIndex = buildGraphIndex(entries);
   fs.writeFileSync(indexPath, JSON.stringify(graphIndex, null, 2), 'utf8');
 
-  // 3b. Incremental LanceDB write (idempotent)
+  // 6. Incremental LanceDB write (idempotent)
   console.log('📚 写入 LanceDB 向量存储...');
   let stored = 0;
   for (const note of notes) {

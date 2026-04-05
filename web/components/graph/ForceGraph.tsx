@@ -257,17 +257,13 @@ export default function ForceGraph() {
     setTooltip(null);
   }, []);
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const MAX_ZOOM = 2.5;
+
   const handleZoom = useCallback((transform: { k: number; x: number; y: number }) => {
-    requestAnimationFrame(() => {
-      setCurrentScale(Math.min(transform.k, MAX_ZOOM));
-    });
     setZoomState({ x: transform.x, y: transform.y, k: transform.k });
+    setCurrentScale(Math.min(transform.k, MAX_ZOOM));
     fgRef.current?.resumeAnimation();
   }, [setCurrentScale]);
-
-  // Cap auto-zoom after nodes change — don't zoom in too much
-  const MAX_ZOOM = 2.5;
   useEffect(() => {
     if (fgRef.current && nodes.length > 0) {
       const checkZoom = () => {

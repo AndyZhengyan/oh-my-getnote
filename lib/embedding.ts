@@ -1,8 +1,7 @@
 // lib/embedding.ts
 // Reuses embedNotes from dist/linker/semantic.js (the single embedding implementation)
-// dist/ is compiled output — no TypeScript source exists for this module
+// Types declared in dist/linker/semantic.d.ts
 
-// @ts-ignore — dist has no .d.ts
 import { embedNotes } from '../dist/linker/semantic.js';
 
 export async function embedText(text: string): Promise<number[]> {
