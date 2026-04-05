@@ -45,6 +45,11 @@ export interface NoteVector {
 /** Store a single note vector. Idempotent (can be called repeatedly for same id). */
 export async function storeNote(note: NoteVector): Promise<void> {
   const t = await getTable();
+  // Idempotent: delete existing row if present, then add
+  const exists = await noteExists(note.id);
+  if (exists) {
+    await t.delete(`id = '${note.id.replace(/'/g, "''")}'`);
+  }
   await t.add([{
     ...note,
     vector: new Float32Array(note.vector),
@@ -88,6 +93,6 @@ export async function noteCount(): Promise<number> {
 /** Check whether a note id already exists in the store. */
 export async function noteExists(id: string): Promise<boolean> {
   const t = await getTable();
-  const results = await t.query().where(`id = "${id}"`).limit(1).toArray();
+  const results = await t.query().where(`id = '${id.replace(/'/g, "''")}'`).limit(1).toArray();
   return results.length > 0;
 }
