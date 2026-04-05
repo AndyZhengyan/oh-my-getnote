@@ -42,6 +42,11 @@
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: var(--bg-base);
   color: var(--text-primary);
