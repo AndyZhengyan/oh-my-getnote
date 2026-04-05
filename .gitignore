@@ -4,6 +4,7 @@ dist/
 *.log
 .DS_Store
 .env
+.env.local
 .npmrc
 .playwright-mcp/
 .superpowers/
