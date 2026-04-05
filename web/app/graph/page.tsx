@@ -10,9 +10,9 @@ import RightPanel from '@/components/panels/RightPanel';
 import ForceGraph from '@/components/graph/ForceGraph';
 
 export default function GraphPage() {
-  const { setGraphIndex, loaded, graphIndex } = useGraphStore(
-    (s) => ({ setGraphIndex: s.setGraphIndex, loaded: s.loaded, graphIndex: s.graphIndex })
-  );
+  const loaded = useGraphStore((s) => s.loaded);
+  const graphIndex = useGraphStore((s) => s.graphIndex);
+  const setGraphIndex = useGraphStore((s) => s.setGraphIndex);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
