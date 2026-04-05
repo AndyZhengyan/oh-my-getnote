@@ -1,9 +1,33 @@
 // lib/lancedb.ts
+// Resolve project root: handles both root-level (tools/convert.ts, scripts/)
+// and web/ subdir (Next.js API routes) execution contexts.
 import { connect, Index, type Connection, type Table } from '@lancedb/lancedb';
 import * as path from 'path';
+import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 
-// LanceDB data lives under data/lancedb/, already excluded by .gitignore
-const DB_PATH = path.resolve(process.cwd(), 'data', 'lancedb', 'notes.lancedb');
+function findProjectRoot(): string {
+  // Use import.meta.url for ESM compatibility (Next.js App Router uses ESM)
+  // Go up from lib/ to project root (file lives at 项目根/lib/lancedb.ts)
+  let fromModule: string;
+  try {
+    fromModule = path.resolve(fileURLToPath(import.meta.url), '..');
+  } catch {
+    // Fallback for CJS or when import.meta.url is unavailable
+    fromModule = path.resolve(__dirname || process.cwd(), '..');
+  }
+  if (fs.existsSync(path.join(fromModule, 'data'))) return fromModule;
+  // Walk up from the file's resolved location looking for data/
+  let dir = fromModule;
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'data'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return fromModule;
+}
+
+const PROJECT_ROOT = findProjectRoot();
+const DB_PATH = path.resolve(PROJECT_ROOT, 'data', 'lancedb', 'notes.lancedb');
 const TABLE_NAME = 'notes';
 
 let db: Connection | null = null;
