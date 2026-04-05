@@ -1,7 +1,7 @@
 // web/app/graph/page.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadGraphIndex } from '@/lib/api';
 import Toolbar from '@/components/toolbar/Toolbar';
@@ -10,15 +10,33 @@ import RightPanel from '@/components/panels/RightPanel';
 import ForceGraph from '@/components/graph/ForceGraph';
 
 export default function GraphPage() {
-  const { setGraphIndex, loaded, graphIndex } = useGraphStore();
+  const { setGraphIndex, loaded, graphIndex } = useGraphStore(
+    (s) => ({ setGraphIndex: s.setGraphIndex, loaded: s.loaded, graphIndex: s.graphIndex })
+  );
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loaded) {
       loadGraphIndex()
         .then(setGraphIndex)
-        .catch(err => console.error('Failed to load graph:', err));
+        .catch(err => {
+          console.error('Failed to load graph:', err);
+          setError('加载图谱失败，请刷新页面重试');
+        });
     }
   }, [loaded, setGraphIndex]);
+
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', color: '#EF4444', fontSize: 14,
+        background: 'var(--bg-base)',
+      }}>
+        {error}
+      </div>
+    );
+  }
 
   if (!loaded || !graphIndex) {
     return (

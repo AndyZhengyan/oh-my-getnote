@@ -1,7 +1,7 @@
 // web/components/panels/LeftNav.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { Bookmark, Square } from 'lucide-react';
 
@@ -30,7 +30,8 @@ export default function LeftNav() {
   const [showTrails, setShowTrails] = useState(false);
 
   // Ensure store's savedTrails is populated on mount
-  loadTrails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadTrails(); }, []);
 
   if (!graphIndex) return null;
 
