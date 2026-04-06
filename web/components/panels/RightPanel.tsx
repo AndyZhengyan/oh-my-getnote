@@ -20,7 +20,7 @@ function fixMarkdownLineBreaks(body: string): string {
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
-import { X, Sparkles, Loader2, Maximize, Minimize } from 'lucide-react';
+import { X, Sparkles, Loader2, Maximize, Minimize, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,6 +48,7 @@ export default function RightPanel() {
   const recHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    setRecTooltip(null);
     if (!selectedNodeId || !graphIndex) { setNote(null); setAiSummary(null); return; }
     const entry = graphIndex.index[selectedNodeId];
     if (!entry) return;
@@ -122,7 +123,7 @@ export default function RightPanel() {
     ? {
         position: 'fixed', top: 78, right: 14, bottom: 14,
         left: 308, width: 'auto', maxHeight: 'calc(100vh - 92px)',
-        background: '#fff', border: 'none', borderRadius: 0,
+        background: '#fff', border: 'none', borderRadius: 14,
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         overflowY: 'auto', zIndex: 300,
         display: 'flex', flexDirection: 'column',
@@ -162,6 +163,9 @@ export default function RightPanel() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            <button onClick={() => window.open(entry.path, '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
+              <ExternalLink size={16} />
+            </button>
             <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
               {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
