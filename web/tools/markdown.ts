@@ -268,24 +268,45 @@ function htmlToMd(html: string): string[] {
         const lvl = headingMatch[1];
         lines.push(`${'#'.repeat(parseInt(lvl) + 1)} ${inline(headingMatch[2])}`);
       } else {
-        const md = inline(inner);
-        if (md.trim()) {
-          // Split on newline from <br> tags
-          const parts = md.split('\n');
-          for (let i = 0; i < parts.length; i++) {
-            if (parts[i].trim()) {
-              lines.push(parts[i].trim());
-            }
-            if (i < parts.length - 1) lines.push('');
+        // P1-3 fix: detect nested <p> and recursively process remaining tokens
+        if (/^<p[\s>]/.test(inner.trim()) || /^<P[\s>]/.test(inner.trim())) {
+          // Advance past the outer <p> and recursively process the nested content.
+          // This avoids duplicate output: the outer handler no longer calls inline(),
+          // and the while loop skip logic no longer skips sibling text.
+          pos++; // skip outer <p>
+          for (const subLine of htmlToMd(tokens.slice(pos).join(''))) {
+            lines.push(subLine);
           }
-          lines.push(''); // paragraph end blank line
         } else {
-          lines.push('');
+          // Normal processing — split on <br>
+          const md = inline(inner);
+          if (md.trim()) {
+            const parts = md.split('\n');
+            for (let i = 0; i < parts.length; i++) {
+              if (parts[i].trim()) {
+                lines.push(parts[i].trim());
+              }
+              if (i < parts.length - 1) lines.push('');
+            }
+            lines.push(''); // paragraph end blank line
+          } else {
+            lines.push('');
+          }
         }
       }
-      pos++;
-      while (pos < tokens.length && !tokens[pos].match(/^<\/p/i)) pos++;
-      pos++;
+      // Skip to the closing </p> of the OUTER <p>
+      // For nested case, pos is already past outer <p>, so we skip to outer </p>
+      // For non-nested case, we skip past outer <p> then to outer </p>
+      if (/^<p[\s>]/.test(inner.trim()) || /^<P[\s>]/.test(inner.trim())) {
+        // pos is already advanced past outer <p>; skip to outer </p>
+        while (pos < tokens.length && !tokens[pos].match(/^<\/p/i)) pos++;
+        pos++;
+      } else {
+        // Normal: skip past outer <p>, then skip to outer </p>
+        pos++;
+        while (pos < tokens.length && !tokens[pos].match(/^<\/p/i)) pos++;
+        pos++;
+      }
     } else if (tagLower === 'pre') {
       // Handle <pre><code class="language-*">...</code></pre>
       // Advance past the <pre> token and look for a nested <code> tag

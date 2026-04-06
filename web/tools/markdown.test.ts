@@ -83,4 +83,13 @@ describe('convertHtmlToMarkdown', () => {
     const between = body.slice(firstIdx + 3, secondIdx);
     expect(between).toMatch(/\n/);
   });
+
+  it('does not duplicate content from nested <p> tags', () => {
+    const html = `<html><body><h1>T</h1><hr><p><p>嵌套内容</p></p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    const body = result!.body;
+    // 嵌套内容只应出现一次
+    const matches = body.match(/嵌套内容/g);
+    expect(matches).toHaveLength(1);
+  });
 });
