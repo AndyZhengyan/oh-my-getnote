@@ -264,6 +264,9 @@ function htmlToMd(html: string): string[] {
         if (md.trim()) {
           lines.push(md);
           lines.push(''); // paragraphs get blank line
+        } else {
+          // 空段落仍输出一个空行，确保段间分隔
+          lines.push('');
         }
       }
       pos++;

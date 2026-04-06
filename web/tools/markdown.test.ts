@@ -57,4 +57,16 @@ describe('convertHtmlToMarkdown', () => {
     const result = convertHtmlToMarkdown(html, 'test-id');
     expect(result?.body).toContain('[Example Link](https://example.com)');
   });
+
+  it('outputs blank line for empty paragraphs', () => {
+    // 空段落作为唯一的分隔手段时，必须产生空行
+    const html = `<html><body><h1>T</h1><p></p><p>第二段</p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    const body = result!.body;
+    expect(body).toContain('第二段');
+    // 第二段前应有空行（来自空<p>）
+    const secondIdx = body.indexOf('第二段');
+    const before = body.slice(0, secondIdx);
+    expect(before).toMatch(/\n\s*\n/);
+  });
 });
