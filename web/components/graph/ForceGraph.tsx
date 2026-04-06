@@ -122,6 +122,7 @@ export default function ForceGraph() {
     focusedNodeId, focusedNeighborIds, focusMode,
     setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
+    multiHopIds, addMultiHopId, removeMultiHopId,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -283,8 +284,14 @@ export default function ForceGraph() {
     const level = levelMap.get(node.id) ?? 'peripheral';
     if (level === 'ghost') return;
     fgRef.current?.resumeAnimation();
+    // Toggle node in/out of multi-hop selection
+    if (multiHopIds.includes(node.id)) {
+      removeMultiHopId(node.id);
+    } else {
+      addMultiHopId(node.id);
+    }
     selectNode(node.id);
-  }, [selectNode, levelMap]);
+  }, [multiHopIds, addMultiHopId, removeMultiHopId, selectNode, levelMap]);
 
   const handleNodeRightClick = useCallback((node: GraphNode) => {
     fgRef.current?.resumeAnimation();
@@ -397,6 +404,18 @@ export default function ForceGraph() {
             ctx.strokeStyle = '#7C3AED';
             ctx.lineWidth = 2.5;
             ctx.stroke();
+          }
+
+          // Multi-hop selection ring
+          if (multiHopIds.includes(n.id)) {
+            ctx.globalAlpha = Math.max(visual.alpha, 0.5);
+            ctx.strokeStyle = '#F59E0B';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r + 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
           }
 
           // Reset shadow after glow node
