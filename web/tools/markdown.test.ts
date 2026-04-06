@@ -105,4 +105,15 @@ describe('convertHtmlToMarkdown', () => {
     // The non-blank prefix of body should be just the attachment line
     expect(between.trim()).toBe(attachment);
   });
+
+  it('inlines image refs into body before main content', () => {
+    const html = `<html><body><h1>T</h1><hr><div class="attachment"><img src="images/test.jpg"/></div><p>正文</p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    // 图片引用应出现在 body 中
+    expect(result!.body).toContain('![](images/test.jpg)');
+    // 并且在正文之前
+    const imgIdx = result!.body.indexOf('![](images/test.jpg)');
+    const bodyIdx = result!.body.indexOf('正文');
+    expect(imgIdx).toBeLessThan(bodyIdx);
+  });
 });

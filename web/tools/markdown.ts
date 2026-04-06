@@ -17,6 +17,7 @@ export interface ConvertResult {
   frontmatter: NoteMetadata;
   body: string;
   imageRefs: string[];
+  _inlineImages?: string[]; // P1-5
 }
 
 // ---------------------------------------------------------------------------
@@ -458,6 +459,15 @@ export function convertHtmlToMarkdown(
     }
   }
 
+  // P1-5: Inline image refs into body before main content (at the beginning)
+  const inlineImages: string[] = [];
+  for (const img of imageRefs) {
+    inlineImages.push(`![](${img})`, '');
+  }
+  if (inlineImages.length > 0) {
+    bodyLines.unshift(...inlineImages);
+  }
+
   return {
     frontmatter: {
       id,
@@ -470,6 +480,7 @@ export function convertHtmlToMarkdown(
     },
     body: bodyLines.join('\n'),
     imageRefs,
+    _inlineImages: inlineImages,
   };
 }
 
