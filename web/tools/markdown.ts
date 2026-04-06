@@ -77,16 +77,26 @@ function norm(text: string): string {
 
 /** Process inline elements within a text node (bold, italic, code, links) */
 function inline(text: string): string {
+  // Handle <br> first: split on it, process each part, rejoin with newline
+  // This avoids stripTags collapsing the newline into a space
+  const parts = text.split(/<br\s*\/?>/gi);
+  if (parts.length > 1) {
+    return parts.map(p => inlineNoBr(p)).join('\n');
+  }
+  return inlineNoBr(text);
+}
+
+function inlineNoBr(text: string): string {
   // links: <a href="...">label</a>
   text = text.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => {
-    return `[${inline(label.trim())}](${href})`;
+    return `[${inlineNoBr(label.trim())}](${href})`;
   });
   // bold+italic: <strong><em> or <em><strong>
-  text = text.replace(/<\/?(?:strong|b)[^>]*>((?:<\/?(?:em|i)[^>]*>|[\s\S])*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `***${inline(inner)}***`);
+  text = text.replace(/<\/?(?:strong|b)[^>]*>((?:<\/?(?:em|i)[^>]*>|[\s\S])*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `***${inlineNoBr(inner)}***`);
   // bold: <strong> or <b>
-  text = text.replace(/<\/?(?:strong|b)[^>]*>([\s\S]*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `**${inline(inner)}**`);
+  text = text.replace(/<\/?(?:strong|b)[^>]*>([\s\S]*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `**${inlineNoBr(inner)}**`);
   // italic: <em> or <i>
-  text = text.replace(/<\/?(?:em|i)[^>]*>([\s\S]*?)<\/?(?:em|i)[^>]*>/gi, (_, inner) => `*${inline(inner)}*`);
+  text = text.replace(/<\/?(?:em|i)[^>]*>([\s\S]*?)<\/?(?:em|i)[^>]*>/gi, (_, inner) => `*${inlineNoBr(inner)}*`);
   // inline code
   text = text.replace(/`([^`]+)`/g, (_, code) => `\`${code}\``); // already escaped
   text = text.replace(/(?<!`)<code(?:[^>]*)?>([\s\S]*?)<\/code>(?!`)/gi, (_, code) => {
@@ -94,8 +104,6 @@ function inline(text: string): string {
     const stripped = stripTags(code);
     return `\`${stripped}\``;
   });
-  // line break: <br>
-  text = text.replace(/<br\s*\/?>/gi, '  \n');
   // strip remaining tags
   text = stripTags(text);
   return text;
@@ -262,10 +270,16 @@ function htmlToMd(html: string): string[] {
       } else {
         const md = inline(inner);
         if (md.trim()) {
-          lines.push(md);
-          lines.push(''); // paragraphs get blank line
+          // Split on newline from <br> tags
+          const parts = md.split('\n');
+          for (let i = 0; i < parts.length; i++) {
+            if (parts[i].trim()) {
+              lines.push(parts[i].trim());
+            }
+            if (i < parts.length - 1) lines.push('');
+          }
+          lines.push(''); // paragraph end blank line
         } else {
-          // 空段落仍输出一个空行，确保段间分隔
           lines.push('');
         }
       }

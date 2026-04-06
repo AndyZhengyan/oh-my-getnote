@@ -69,4 +69,18 @@ describe('convertHtmlToMarkdown', () => {
     const before = body.slice(0, secondIdx);
     expect(before).toMatch(/\n\s*\n/);
   });
+
+  it('converts <br> inside <p> to separate lines', () => {
+    const html = `<html><body><h1>T</h1><hr><p>第一行<br>第二行</p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    const body = result!.body;
+    expect(body).toContain('第一行');
+    expect(body).toContain('第二行');
+    // Find the substring between the two lines
+    const firstIdx = body.indexOf('第一行');
+    const secondIdx = body.indexOf('第二行');
+    // Content after '第一行' and before '第二行' should contain a newline
+    const between = body.slice(firstIdx + 3, secondIdx);
+    expect(between).toMatch(/\n/);
+  });
 });
