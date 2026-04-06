@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
-import { Bookmark, Square } from 'lucide-react';
+import { Bookmark, Square, Trash2 } from 'lucide-react';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -26,7 +26,7 @@ const DOMAIN_COLORS: Record<string, string> = {
 };
 
 export default function LeftNav() {
-  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId, savedTrails, loadTrails, stopTrailPlayback } = useGraphStore();
+  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId, savedTrails, loadTrails, stopTrailPlayback, deleteTrail } = useGraphStore();
   const [showTrails, setShowTrails] = useState(false);
 
   // Ensure store's savedTrails is populated on mount
@@ -184,13 +184,13 @@ export default function LeftNav() {
               const isActive = highlightedTrailId === trail.id;
               return (
                 <div key={trail.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
                   padding: '6px 16px 6px 32px',
                   fontSize: 12,
                   color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
                   borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
                   background: isActive ? 'var(--accent-light)' : 'transparent',
                   transition: 'background 0.15s, color 0.15s, border-left-color 0.15s',
@@ -200,10 +200,31 @@ export default function LeftNav() {
                 onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
                 onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
                 >
-                  {trail.name}
-                  <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {trail.name}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', marginRight: 4, flexShrink: 0 }}>
                     {trail.steps.length}步
                   </span>
+                  <button
+                    title="删除轨迹"
+                    onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      borderRadius: 3,
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               );
             })}

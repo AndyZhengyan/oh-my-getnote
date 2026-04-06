@@ -106,8 +106,11 @@ function convertOl(html: string): string {
   const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
   return items
     .map((item) => {
-      // handle nested ol/ul
-      const content = inline(item.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1'));
+      // Extract inner HTML and pass to inline() to preserve bold/italic/code formatting.
+      // The second replace's inner capture group handles the case where a nested <li> opens
+      // before any closing tag is found (greedy capture), then trims back to the innermost.
+      const inner = item.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
+      const content = inline(inner);
       const nested = convertListContent(item);
       const lines = nested.split('\n').map((l, j) => j === 0 ? `1. ${content}` : `   ${l}`);
       return lines.join('\n');
@@ -120,9 +123,11 @@ function convertUl(html: string): string {
   const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
   return items
     .map(item => {
-      const content = stripTags(item.replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1')).trim();
+      // Same fix as convertOl: pass HTML content to inline() instead of stripTags()
+      const inner = item.replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
+      const content = inline(inner);
       const nested = convertListContent(item);
-      const lines = nested.split('\n').map((l, i) => i === 0 ? `- ${inline(content)}` : `  ${l}`);
+      const lines = nested.split('\n').map((l, i) => i === 0 ? `- ${content}` : `  ${l}`);
       return lines.join('\n');
     })
     .join('\n');
@@ -264,6 +269,25 @@ function htmlToMd(html: string): string[] {
       pos++;
       while (pos < tokens.length && !tokens[pos].match(/^<\/p/i)) pos++;
       pos++;
+    } else if (tagLower === 'pre') {
+      // Handle <pre><code class="language-*">...</code></pre>
+      // Advance past the <pre> token and look for a nested <code> tag
+      pos++;
+      let langClass = '';
+      if (pos < tokens.length && tokens[pos].match(/^<code/i)) {
+        const langMatch = tokens[pos].match(/class=["']language-([^"'\s]+)/i);
+        if (langMatch) langClass = langMatch[1]!;
+        pos++; // skip the <code> tag token
+      }
+      const codeParts: string[] = [];
+      while (pos < tokens.length) {
+        if (tokens[pos].match(/^<\/pre/i)) { pos++; break; }
+        if (!tokens[pos].startsWith('<')) codeParts.push(tokens[pos]);
+        pos++;
+      }
+      const codeText = decodeEntities(codeParts.join('').replace(/`/g, ''));
+      lines.push(`\`\`\`${langClass}\n${codeText}\n\`\`\``);
+      lines.push('');
     } else if (tagLower === 'code') {
       // block-level <code> — collect until </code>
       const codeParts: string[] = [];
