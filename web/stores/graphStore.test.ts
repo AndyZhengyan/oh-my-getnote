@@ -17,6 +17,11 @@ vi.stubGlobal('localStorage', {
 describe('graphStore — trajectory features', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+
+    // Reset module-level animation variables
+    vi.clearAllTimers();
+    useGraphStore.setState({ _trailAnimPlaying: false });
+
     useGraphStore.setState({
       trailRecording: false,
       currentTrail: [],
@@ -169,5 +174,70 @@ describe('graphStore — trajectory features', () => {
     const { currentTrail, selectedNodeId } = useGraphStore.getState();
     expect(currentTrail).toHaveLength(0);
     expect(selectedNodeId).toBe('any-node');
+  });
+
+  // -------------------------------------------------------------------------
+  // Edge cases
+  // -------------------------------------------------------------------------
+  it('playTrail with non-existent id does nothing', () => {
+    const store = useGraphStore.getState();
+    store.startTrail();
+    store.saveTrail('Real Trail');
+    const realTrailId = useGraphStore.getState().savedTrails[0].id;
+
+    // Attempt to play a trail that does not exist
+    store.playTrail('non_existent_id_12345');
+
+    const { highlightedTrailId, highlightedTrailNodeIds, _trailAnimPlaying } = useGraphStore.getState();
+    expect(highlightedTrailId).toBeNull();
+    expect(highlightedTrailNodeIds).toHaveLength(0);
+    expect(_trailAnimPlaying).toBe(false);
+  });
+
+  it('deleteTrail with non-existent id does nothing to savedTrails', () => {
+    const store = useGraphStore.getState();
+    store.startTrail();
+    store.selectNode('node-x');
+    store.saveTrail('Existing Trail');
+
+    const { savedTrails } = useGraphStore.getState();
+    expect(savedTrails).toHaveLength(1);
+
+    // Attempt to delete a trail that does not exist
+    store.deleteTrail('non_existent_id_12345');
+
+    const { savedTrails: after } = useGraphStore.getState();
+    expect(after).toHaveLength(1);
+    expect(after[0].id).toBe(savedTrails[0].id);
+  });
+
+  it('stopTrailPlayback when nothing is playing does nothing (no crash)', () => {
+    const store = useGraphStore.getState();
+    // Ensure store is in a clean state
+    expect(useGraphStore.getState().highlightedTrailId).toBeNull();
+
+    // Calling stop when nothing is playing must not crash and must leave state unchanged
+    store.stopTrailPlayback();
+
+    const { highlightedTrailId, highlightedTrailNodeIds, _trailAnimPlaying } = useGraphStore.getState();
+    expect(highlightedTrailId).toBeNull();
+    expect(highlightedTrailNodeIds).toHaveLength(0);
+    expect(_trailAnimPlaying).toBe(false);
+  });
+
+  it('saveTrail writes the trail to localStorage key memex_trails', () => {
+    const store = useGraphStore.getState();
+    store.startTrail();
+    store.selectNode('node-p');
+    store.selectNode('node-q');
+    store.saveTrail('LocalStorage Trail');
+
+    const stored = mockStorage['memex_trails'];
+    expect(stored).toBeDefined();
+    const parsed: Array<{ id: string; name: string; steps: Array<{ noteId: string }> }> = JSON.parse(stored);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].name).toBe('LocalStorage Trail');
+    expect(parsed[0].steps[0].noteId).toBe('node-p');
+    expect(parsed[0].steps[1].noteId).toBe('node-q');
   });
 });

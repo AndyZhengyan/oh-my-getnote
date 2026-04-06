@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
+import { ExternalLink } from 'lucide-react';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -55,7 +56,7 @@ interface TooltipState {
 export function buildLevelMap(
   selectedNodeId: string | null,
   focusedNodeId: string | null,
-  focusedNeighborIds: string[],
+  focusedNeighborIds: string[] | Set<string>,
   graphIndex: GraphIndex | null,
 ): ReadonlyMap<string, NodeLevel> {
   if (!graphIndex) return new Map();
@@ -309,6 +310,37 @@ export default function ForceGraph() {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Floating source HTML button */}
+      <button
+        onClick={() => selectedNodeId && window.open('/api/source/voicenotes-202603272159-getnotes_archive_1a71a34b40018ee0wflq7pEq/notes/' + selectedNodeId + '.html', '_blank')}
+        disabled={!selectedNodeId}
+        title="查看源文件"
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          zIndex: 400,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '4px 10px',
+          background: selectedNodeId ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
+          border: '1px solid var(--border)',
+          borderRadius: 20,
+          fontSize: 12,
+          color: selectedNodeId ? 'var(--text-secondary)' : 'var(--text-muted)',
+          cursor: selectedNodeId ? 'pointer' : 'not-allowed',
+          fontFamily: 'var(--font-ui)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          transition: 'opacity 0.15s, background 0.15s',
+        }}
+      >
+        <ExternalLink size={12} />
+        <span>源文件</span>
+      </button>
+
       <ForceGraph2D
         ref={fgRef}
         graphData={{ nodes, links }}

@@ -43,12 +43,14 @@ export default function RightPanel() {
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [recTooltip, setRecTooltip] = useState<{ noteId: string; x: number; y: number } | null>(null);
   const [recSummary, setRecSummary] = useState<string>('');
   const recHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setRecTooltip(null);
+    setAiError(null);
     if (!selectedNodeId || !graphIndex) { setNote(null); setAiSummary(null); return; }
     const entry = graphIndex.index[selectedNodeId];
     if (!entry) return;
@@ -85,7 +87,7 @@ export default function RightPanel() {
           body: JSON.stringify({ path: graphIndex.index[selectedNodeId].path, frontmatter: { ...note.frontmatter, ai_summary: data.summary } }),
         });
       }
-    } catch (err) { console.error('AI summary failed:', err); }
+    } catch (err) { setAiError('AI 摘要生成失败，请检查网络或 API 配置'); }
     finally { setAiLoading(false); }
   }, [selectedNodeId, note, graphIndex]);
 
@@ -163,7 +165,7 @@ export default function RightPanel() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            <button onClick={() => window.open(entry.path, '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
+            <button onClick={() => window.open('/api/source/voicenotes-202603272159-getnotes_archive_1a71a34b40018ee0wflq7pEq/notes/' + selectedNodeId + '.html', '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
               <ExternalLink size={16} />
             </button>
             <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
@@ -188,13 +190,15 @@ export default function RightPanel() {
         </div>
 
         {/* AI Summary */}
-        {(aiSummary || aiLoading) && (
+        {(aiSummary || aiLoading || aiError) && (
           <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--border)', background: 'var(--accent-light)' }}>
             <div style={{ fontSize: 10, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6, fontWeight: 600 }}>✨ AI 摘要</div>
             {aiLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
                 <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />生成中…
               </div>
+            ) : aiError ? (
+              <div style={{ fontSize: 12, color: '#EF4444' }}>{aiError}</div>
             ) : (
               <div className="markdown-body" style={{ fontSize: 13 }}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiSummary}</ReactMarkdown>

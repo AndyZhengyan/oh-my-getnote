@@ -12,6 +12,7 @@ dist/
 # Private note content — never commit
 data/
 source/
+!web/app/api/source/
 kg-site/
 viewer.html
 graph-index.json

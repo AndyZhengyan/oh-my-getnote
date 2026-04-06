@@ -7,7 +7,7 @@ const SYSTEM_PROMPT = `你是一个专业的知识管理助手。请用3句话�
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'API key not configured' }, { status: 503 });
     }
 
     const { noteId, title, content } = await req.json();

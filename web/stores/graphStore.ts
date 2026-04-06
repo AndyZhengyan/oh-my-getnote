@@ -57,7 +57,7 @@ interface GraphState {
   searchQuery: string;
   selectedNodeId: string | null;
   focusedNodeId: string | null;
-  focusedNeighborIds: string[];
+  focusedNeighborIds: Set<string>;
   focusMode: boolean;
   currentScale: number;
   trailRecording: boolean;
@@ -107,7 +107,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   graphIndex: null, loaded: false, error: null,
   domainFilter: '', typeFilter: '', searchQuery: '',
   selectedNodeId: null,
-  focusedNodeId: null, focusedNeighborIds: [], focusMode: false, currentScale: 1,
+  focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
   trailRecording: false, currentTrail: [],
   savedTrails: [],
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
@@ -131,10 +131,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     focusedNodeId: id,
     focusMode: id !== null,
     focusedNeighborIds: id
-      ? (state.graphIndex?.index[id]?.connections.map(c => c.noteId) ?? [])
-      : [],
+      ? new Set(state.graphIndex?.index[id]?.connections.map(c => c.noteId) ?? [])
+      : new Set<string>(),
   })),
-  setFocusMode: (on) => set({ focusMode: on, focusedNodeId: null, focusedNeighborIds: [] }),
+  setFocusMode: (on) => set({ focusMode: on, focusedNodeId: null, focusedNeighborIds: new Set<string>() }),
   setCurrentScale: (scale) => set({ currentScale: scale }),
 
   startTrail: () => set({ trailRecording: true, currentTrail: [] }),
