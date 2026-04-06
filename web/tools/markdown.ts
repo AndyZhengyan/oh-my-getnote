@@ -429,13 +429,16 @@ export function convertHtmlToMarkdown(
 
   // Build body: attachment + non-empty lines, collapsed double blank lines
   const bodyLines: string[] = [];
-  if (attachmentLine) bodyLines.push(attachmentLine, '');
+  if (attachmentLine) bodyLines.push(attachmentLine);
+  if (rawLines.length > 0) bodyLines.push(''); // 正文前强制空行
   let lastWasBlank = false;
   for (const line of rawLines) {
     const trimmed = line.trim();
     if (trimmed === '') {
       if (!lastWasBlank) bodyLines.push('');
       lastWasBlank = true;
+    } else if (trimmed === '---') {
+      // Skip <hr> separator lines from body
     } else {
       bodyLines.push(trimmed);
       lastWasBlank = false;

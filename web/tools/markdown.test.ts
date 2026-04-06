@@ -92,4 +92,17 @@ describe('convertHtmlToMarkdown', () => {
     const matches = body.match(/嵌套内容/g);
     expect(matches).toHaveLength(1);
   });
+
+  it('adds blank line between attachment and body', () => {
+    const html = `<html><body><h1>T</h1><hr><div class="attachment"><a href="https://x.com/att">原文</a></div><p>Body txt</p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    const body = result!.body;
+    // attachmentLine is the first non-blank line
+    const attachment = body.slice(0, body.indexOf('\n'));
+    // find body content position (URL contains 'att', not 'txt' — no conflict)
+    const bodyIdx = body.indexOf('Body txt');
+    const between = body.slice(0, bodyIdx);
+    // The non-blank prefix of body should be just the attachment line
+    expect(between.trim()).toBe(attachment);
+  });
 });
