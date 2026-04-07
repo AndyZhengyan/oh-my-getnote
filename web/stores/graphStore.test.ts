@@ -23,8 +23,7 @@ describe('graphStore — trajectory features', () => {
     useGraphStore.setState({ _trailAnimPlaying: false });
 
     useGraphStore.setState({
-      trailRecording: false,
-      currentTrail: [],
+      browsePath: [],
       savedTrails: [],
       highlightedTrailId: null,
       highlightedTrailNodeIds: [],
@@ -37,7 +36,6 @@ describe('graphStore — trajectory features', () => {
   // -------------------------------------------------------------------------
   it('saveTrail updates savedTrails in store', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-a');
     store.selectNode('node-b');
     store.saveTrail('My Trail');
@@ -79,7 +77,6 @@ describe('graphStore — trajectory features', () => {
   // -------------------------------------------------------------------------
   it('stopTrailPlayback clears highlightedTrailId and highlightedTrailNodeIds', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-in-trail');
     store.saveTrail('Trail to Play');
 
@@ -98,7 +95,6 @@ describe('graphStore — trajectory features', () => {
 
   it('playTrail sets highlighted state from saved trail', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('step-node');
     store.saveTrail('Playback Trail');
 
@@ -111,46 +107,30 @@ describe('graphStore — trajectory features', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Bug 3: finishTrail clears currentTrail (not just trailRecording)
+  // clearBrowsePath clears browsePath
   // -------------------------------------------------------------------------
-  it('finishTrail clears currentTrail even when discarding', () => {
+  it('clearBrowsePath clears browsePath even when discarding', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-x');
     store.selectNode('node-y');
 
-    expect(useGraphStore.getState().currentTrail).toEqual(['node-x', 'node-y']);
+    expect(useGraphStore.getState().browsePath).toEqual(['node-x', 'node-y']);
 
-    store.finishTrail();
+    store.clearBrowsePath();
 
-    const { currentTrail, trailRecording } = useGraphStore.getState();
-    expect(currentTrail).toHaveLength(0);
-    expect(trailRecording).toBe(false);
+    const { browsePath } = useGraphStore.getState();
+    expect(browsePath).toHaveLength(0);
   });
 
-  it('saveTrail with valid name also clears currentTrail', () => {
+  it('saveTrail with valid name saves browsePath and keeps it intact', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-a');
     store.saveTrail('Valid Name');
 
-    const { currentTrail, trailRecording, savedTrails } = useGraphStore.getState();
-    expect(currentTrail).toHaveLength(0);
-    expect(trailRecording).toBe(false);
+    const { browsePath, savedTrails } = useGraphStore.getState();
+    expect(browsePath).toHaveLength(1);
     expect(savedTrails[0].name).toBe('Valid Name');
-  });
-
-  // -------------------------------------------------------------------------
-  // Bug 4 (found by tests): selectNode deduplication was broken
-  // -------------------------------------------------------------------------
-  it('selectNode while recording does not append duplicate nodes', () => {
-    const store = useGraphStore.getState();
-    store.startTrail();
-    store.selectNode('node-a');
-    store.selectNode('node-b');
-    store.selectNode('node-a'); // same as first — must not append
-
-    expect(useGraphStore.getState().currentTrail).toEqual(['node-a', 'node-b']);
+    expect(savedTrails[0].steps[0].noteId).toBe('node-a');
   });
 
   // -------------------------------------------------------------------------
@@ -158,7 +138,6 @@ describe('graphStore — trajectory features', () => {
   // -------------------------------------------------------------------------
   it('deleteTrail removes trail from savedTrails', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.saveTrail('To Delete');
 
     const trailId = useGraphStore.getState().savedTrails[0].id;
@@ -167,12 +146,12 @@ describe('graphStore — trajectory features', () => {
     expect(useGraphStore.getState().savedTrails).toHaveLength(0);
   });
 
-  it('selectNode outside recording mode does not affect currentTrail', () => {
+  it('selectNode always affects browsePath', () => {
     const store = useGraphStore.getState();
     store.selectNode('any-node');
 
-    const { currentTrail, selectedNodeId } = useGraphStore.getState();
-    expect(currentTrail).toHaveLength(0);
+    const { browsePath, selectedNodeId } = useGraphStore.getState();
+    expect(browsePath).toEqual(['any-node']);
     expect(selectedNodeId).toBe('any-node');
   });
 
@@ -181,7 +160,6 @@ describe('graphStore — trajectory features', () => {
   // -------------------------------------------------------------------------
   it('playTrail with non-existent id does nothing', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.saveTrail('Real Trail');
     const realTrailId = useGraphStore.getState().savedTrails[0].id;
 
@@ -196,7 +174,6 @@ describe('graphStore — trajectory features', () => {
 
   it('deleteTrail with non-existent id does nothing to savedTrails', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-x');
     store.saveTrail('Existing Trail');
 
@@ -227,7 +204,6 @@ describe('graphStore — trajectory features', () => {
 
   it('saveTrail writes the trail to localStorage key memex_trails', () => {
     const store = useGraphStore.getState();
-    store.startTrail();
     store.selectNode('node-p');
     store.selectNode('node-q');
     store.saveTrail('LocalStorage Trail');
@@ -239,5 +215,63 @@ describe('graphStore — trajectory features', () => {
     expect(parsed[0].name).toBe('LocalStorage Trail');
     expect(parsed[0].steps[0].noteId).toBe('node-p');
     expect(parsed[0].steps[1].noteId).toBe('node-q');
+  });
+});
+
+describe('browsePath — auto-trace behavior', () => {
+  beforeEach(() => {
+    Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    vi.clearAllTimers();
+    useGraphStore.setState({
+      trailRecording: undefined as unknown as boolean,
+      currentTrail: undefined as unknown as string[],
+    });
+    useGraphStore.setState({
+      browsePath: [],
+      savedTrails: [],
+      selectedNodeId: null,
+      highlightedTrailId: null,
+      highlightedTrailNodeIds: [],
+      _trailAnimPlaying: false,
+    });
+  });
+
+  it('clicking a node adds it to browsePath', () => {
+    useGraphStore.getState().selectNode('node-a');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a']);
+  });
+
+  it('clicking second node appends to browsePath', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+  });
+
+  it('clicking same node again removes it and subsequent', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().selectNode('node-a'); // 再点 node-a → 移除
+    expect(useGraphStore.getState().browsePath).toEqual([]);
+  });
+
+  it('clicking middle node truncates path after it', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().selectNode('node-c');
+    useGraphStore.getState().selectNode('node-b'); // 截断到 node-b
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+  });
+
+  it('last node is always the selected node', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-b');
+  });
+
+  it('clearBrowsePath resets browsePath', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().clearBrowsePath();
+    expect(useGraphStore.getState().browsePath).toEqual([]);
   });
 });

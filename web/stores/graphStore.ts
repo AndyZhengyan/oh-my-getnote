@@ -60,8 +60,8 @@ interface GraphState {
   focusedNeighborIds: Set<string>;
   focusMode: boolean;
   currentScale: number;
-  trailRecording: boolean;
-  currentTrail: string[];
+  browsePath: string[];
+  browsePathShow: boolean;
   savedTrails: Trail[];
   highlightedTrailId: string | null;
   highlightedTrailNodeIds: string[];
@@ -74,14 +74,13 @@ interface GraphState {
   focusNode: (id: string | null) => void;
   setFocusMode: (on: boolean) => void;
   setCurrentScale: (scale: number) => void;
-  startTrail: () => void;
-  addToTrail: (id: string) => void;
+  clearBrowsePath: () => void;
+  removeFromBrowsePath: (id: string) => void;
   saveTrail: (name: string) => void;
   loadTrails: () => void;
   deleteTrail: (id: string) => void;
   playTrail: (id: string) => void;
   stopTrailPlayback: () => void;
-  finishTrail: () => void;
   // Multi-hop
   multiHopIds: string[];
   multiHopPanelOpen: boolean;
@@ -108,7 +107,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   domainFilter: '', typeFilter: '', searchQuery: '',
   selectedNodeId: null,
   focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
-  trailRecording: false, currentTrail: [],
+  browsePath: [],
+  browsePathShow: false,
   savedTrails: [],
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
   multiHopIds: [], multiHopPanelOpen: false,
@@ -119,12 +119,16 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
-    if (state.trailRecording && id) {
-      const newTrail = [...state.currentTrail];
-      if (!newTrail.includes(id)) newTrail.push(id);
-      set({ selectedNodeId: id, currentTrail: newTrail });
+    if (state.browsePath.includes(id)) {
+      const idx = state.browsePath.indexOf(id);
+      if (idx === 0) {
+        // Clicking the first node again returns to empty path
+        set({ selectedNodeId: id, browsePath: [] });
+      } else {
+        set({ selectedNodeId: id, browsePath: state.browsePath.slice(0, idx + 1) });
+      }
     } else {
-      set({ selectedNodeId: id });
+      set({ selectedNodeId: id, browsePath: [...state.browsePath, id] });
     }
   },
   focusNode: (id) => set(state => ({
@@ -137,24 +141,24 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setFocusMode: (on) => set({ focusMode: on, focusedNodeId: null, focusedNeighborIds: new Set<string>() }),
   setCurrentScale: (scale) => set({ currentScale: scale }),
 
-  startTrail: () => set({ trailRecording: true, currentTrail: [] }),
-  addToTrail: (id) => set(state => {
-    const newTrail = [...state.currentTrail];
-    if (newTrail[newTrail.length - 1] !== id) newTrail.push(id);
-    return { currentTrail: newTrail };
+  clearBrowsePath: () => set({ browsePath: [] }),
+  removeFromBrowsePath: (id) => set(state => {
+    const idx = state.browsePath.indexOf(id);
+    if (idx === -1) return {};
+    return { browsePath: state.browsePath.slice(0, idx) };
   }),
   saveTrail: (name) => {
     const state = get();
-    if (!name.trim()) { set({ trailRecording: false }); return; }
+    if (!name.trim()) return;
     const trail: Trail = {
       id: `trail_${Date.now()}`,
       name: name.trim(),
       createdAt: new Date().toISOString(),
-      steps: state.currentTrail.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
+      steps: state.browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
     };
     const trails = [trail, ...state.savedTrails].slice(0, 20);
     saveToStorage(trails);
-    set({ savedTrails: trails, trailRecording: false, currentTrail: [] });
+    set({ savedTrails: trails });
   },
   loadTrails: () => {
     const trails = loadFromStorage();
@@ -202,7 +206,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }
     set({ highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false });
   },
-  finishTrail: () => set({ trailRecording: false, currentTrail: [] }),
 
   // Multi-hop
   addMultiHopId: (id) => set(state => ({
