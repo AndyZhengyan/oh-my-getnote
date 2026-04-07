@@ -88,6 +88,12 @@ function inline(text: string): string {
 }
 
 function inlineNoBr(text: string): string {
+  // P3-8 fix: Handle <code> tags FIRST, before stripTags wipes them
+  // This must run before any other tag processing
+  text = text.replace(/<code(?:[^>]*)?>([\s\S]*?)<\/code>/gi, (_, code) => {
+    return '`' + stripTags(code) + '`';
+  });
+
   // links: <a href="...">label</a>
   text = text.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => {
     return `[${inlineNoBr(label.trim())}](${href})`;
@@ -98,13 +104,6 @@ function inlineNoBr(text: string): string {
   text = text.replace(/<\/?(?:strong|b)[^>]*>([\s\S]*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `**${inlineNoBr(inner)}**`);
   // italic: <em> or <i>
   text = text.replace(/<\/?(?:em|i)[^>]*>([\s\S]*?)<\/?(?:em|i)[^>]*>/gi, (_, inner) => `*${inlineNoBr(inner)}*`);
-  // inline code
-  text = text.replace(/`([^`]+)`/g, (_, code) => `\`${code}\``); // already escaped
-  text = text.replace(/(?<!`)<code(?:[^>]*)?>([\s\S]*?)<\/code>(?!`)/gi, (_, code) => {
-    // strip any nested HTML inside code
-    const stripped = stripTags(code);
-    return `\`${stripped}\``;
-  });
   // strip remaining tags
   text = stripTags(text);
   return text;

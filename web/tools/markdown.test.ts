@@ -135,4 +135,13 @@ describe('convertHtmlToMarkdown', () => {
     const bodyIdx = result!.body.indexOf('正文');
     expect(imgIdx).toBeLessThan(bodyIdx);
   });
+
+  it('preserves <code> inside <p> as inline code', () => {
+    const html = `<html><body><h1>T</h1><hr><p>Use <code>transformers</code> library</p></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    expect(result!.body).toContain('`transformers`');
+    // Should not be plain text without backticks
+    const withoutBackticks = result!.body.replace(/`[^`]*`/g, '');
+    expect(withoutBackticks).not.toContain('transformers');
+  });
 });
