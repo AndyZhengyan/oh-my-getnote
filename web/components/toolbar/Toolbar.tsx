@@ -3,7 +3,7 @@
 
 import { useGraphStore } from '@/stores/graphStore';
 import { triggerGraphReset } from '@/stores/graphStore';
-import { Search, Route, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 import VectorSearchButton from '@/components/vector/VectorSearchButton';
 import MultiHopPanel from '@/components/vector/MultiHopPanel';
 
@@ -11,29 +11,9 @@ export default function Toolbar() {
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
     setDomainFilter, setTypeFilter, setSearchQuery,
-    trailRecording, startTrail, saveTrail, finishTrail,
     selectNode,
     highlightedTrailId, stopTrailPlayback,
   } = useGraphStore();
-
-  const handleTrailClick = () => {
-    if (trailRecording) {
-      const name = window.prompt(
-        '保存探索轨迹名称：',
-        `探索 ${new Date().toLocaleDateString('zh-CN')}`
-      );
-      if (name !== null && name.trim()) {
-        saveTrail(name.trim());
-      }
-      // Cancel prompt → discard (don't save)
-      else if (name !== null) {
-        finishTrail();
-      }
-      // If user cancels the browser prompt → do nothing, stay recording
-    } else {
-      startTrail();
-    }
-  };
 
   const handleReset = () => {
     selectNode(null);
@@ -190,27 +170,6 @@ export default function Toolbar() {
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-        <button
-          onClick={handleTrailClick}
-          style={{
-            background: trailRecording ? 'var(--accent-light)' : 'transparent',
-            border: `1px solid ${trailRecording ? 'var(--accent-mid)' : 'transparent'}`,
-            borderRadius: 6,
-            color: trailRecording ? 'var(--accent)' : 'var(--text-secondary)',
-            padding: '4px 10px',
-            fontSize: 12,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            transition: 'all 0.12s',
-          }}
-        >
-          <Route size={12} />
-          {trailRecording ? '结束' : '轨迹'}
-        </button>
-
         {highlightedTrailId && (
           <button
             onClick={stopTrailPlayback}
