@@ -264,7 +264,9 @@ export default function ForceGraph() {
   const handleZoom = useCallback((transform: { k: number; x: number; y: number }) => {
     setZoomState({ x: transform.x, y: transform.y, k: transform.k });
     setCurrentScale(Math.min(transform.k, MAX_ZOOM));
-    fgRef.current?.resumeAnimation();
+    // NOTE: Do NOT call resumeAnimation() here — it triggers an internal
+    // zoom event that re-enters handleZoom → infinite recursion (stack overflow).
+    // Animation is resumed on user interactions (click/drag) via handleNodeClick, etc.
   }, [setCurrentScale]);
   useEffect(() => {
     if (fgRef.current && nodes.length > 0) {
