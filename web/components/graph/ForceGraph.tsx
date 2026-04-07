@@ -122,6 +122,7 @@ export default function ForceGraph() {
     focusedNodeId, focusedNeighborIds, focusMode,
     setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
+    browsePath,
     multiHopIds, addMultiHopId, removeMultiHopId,
   } = useGraphStore();
 
@@ -212,8 +213,8 @@ export default function ForceGraph() {
 
   const trailNodeSet = useMemo(() => new Set(highlightedTrailNodeIds), [highlightedTrailNodeIds]);
   const trailLinkSet = useMemo(() => new Set(
-    highlightedTrailNodeIds.slice(0, -1).map((id, i) => `${id}→${highlightedTrailNodeIds[i + 1]}`)
-  ), [highlightedTrailNodeIds]);
+    browsePath.slice(0, -1).map((id, i) => `${id}→${browsePath[i + 1]}`)
+  ), [browsePath]);
 
   // Node hover detection via proximity
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
