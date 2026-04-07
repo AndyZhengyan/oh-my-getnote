@@ -1,9 +1,8 @@
 // web/components/panels/LeftNav.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
-import { Bookmark, Square, Trash2 } from 'lucide-react';
+import { Bookmark, Trash2, X } from 'lucide-react';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -26,12 +25,15 @@ const DOMAIN_COLORS: Record<string, string> = {
 };
 
 export default function LeftNav() {
-  const { graphIndex, domainFilter, setDomainFilter, typeFilter, setTypeFilter, playTrail, highlightedTrailId, savedTrails, loadTrails, stopTrailPlayback, deleteTrail } = useGraphStore();
-  const [showTrails, setShowTrails] = useState(false);
-
-  // Ensure store's savedTrails is populated on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadTrails(); }, []);
+  const {
+    graphIndex,
+    domainFilter, setDomainFilter,
+    typeFilter, setTypeFilter,
+    browsePath, browsePathShow, setBrowsePathShow,
+    clearBrowsePath, removeFromBrowsePath,
+    savedTrails,
+    playTrail, stopTrailPlayback, deleteTrail,
+  } = useGraphStore();
 
   if (!graphIndex) return null;
 
@@ -123,36 +125,10 @@ export default function LeftNav() {
         )}
       </div>
 
-      {/* Trail history */}
+      {/* Trail section — browsePath auto-trace */}
       <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
-        {/* Stop button — shown while a trail is highlighted */}
-        {highlightedTrailId && (
-          <div style={{ padding: '4px 16px 4px' }}>
-            <button
-              onClick={stopTrailPlayback}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '5px 10px',
-                background: 'var(--accent)',
-                border: 'none',
-                borderRadius: 8,
-                color: '#fff',
-                fontSize: 12,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
-            >
-              <Square size={10} fill="currentColor" />
-              停止高亮
-            </button>
-          </div>
-        )}
-
         <button
-          onClick={() => setShowTrails(!showTrails)}
+          onClick={() => setBrowsePathShow(!browsePathShow)}
           style={{
             width: '100%',
             display: 'flex',
@@ -161,7 +137,7 @@ export default function LeftNav() {
             padding: '8px 16px',
             background: 'none',
             border: 'none',
-            color: showTrails ? 'var(--accent)' : 'var(--text-secondary)',
+            color: browsePathShow ? 'var(--accent)' : 'var(--text-secondary)',
             fontSize: 13,
             fontFamily: 'var(--font-ui)',
             cursor: 'pointer',
@@ -170,53 +146,71 @@ export default function LeftNav() {
           }}
         >
           <Bookmark size={13} />
-          探索轨迹 ({savedTrails.length})
+          探索路径 ({browsePath.length})
+          {browsePath.length > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); clearBrowsePath(); }}
+              title="清空轨迹"
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                padding: 2,
+                display: 'flex',
+                borderRadius: 3,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+            >
+              <X size={12} />
+            </button>
+          )}
         </button>
 
-        {showTrails && (
+        {browsePathShow && (
           <div>
-            {savedTrails.length === 0 && (
+            {browsePath.length === 0 && (
               <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
-                暂无轨迹记录
+                点击图谱节点开始追踪
               </div>
             )}
-            {savedTrails.slice(0, 10).map(trail => {
-              const isActive = highlightedTrailId === trail.id;
+            {browsePath.map((nodeId, i) => {
+              const entry = graphIndex?.index[nodeId];
+              const isLast = i === browsePath.length - 1;
               return (
-                <div key={trail.id} style={{
+                <div key={nodeId} style={{
                   display: 'flex',
                   alignItems: 'center',
                   padding: '6px 16px 6px 32px',
                   fontSize: 12,
-                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                  color: isLast ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   overflow: 'hidden',
-                  borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
-                  background: isActive ? 'var(--accent-light)' : 'transparent',
-                  transition: 'background 0.15s, color 0.15s, border-left-color 0.15s',
+                  borderLeft: `2px solid ${isLast ? 'var(--accent)' : 'transparent'}`,
+                  background: isLast ? 'var(--accent-light)' : 'transparent',
                   fontFamily: 'var(--font-ui)',
+                  transition: 'background 0.15s, color 0.15s',
                 }}
-                onClick={() => playTrail(trail.id)}
-                onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
-                onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
+                onClick={() => useGraphStore.getState().selectNode(nodeId)}
+                onMouseEnter={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
+                onMouseLeave={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
                 >
+                  <span style={{ color: 'var(--text-muted)', marginRight: 6, flexShrink: 0 }}>{i + 1}.</span>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {trail.name}
-                  </span>
-                  <span style={{ color: 'var(--text-muted)', marginRight: 4, flexShrink: 0 }}>
-                    {trail.steps.length}步
+                    {entry?.title ?? nodeId}
                   </span>
                   <button
-                    title="删除轨迹"
-                    onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
+                    title="移除此步及后续"
+                    onClick={e => { e.stopPropagation(); removeFromBrowsePath(nodeId); }}
                     style={{
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
-                      padding: '2px',
+                      padding: 2,
                       display: 'flex',
-                      alignItems: 'center',
                       borderRadius: 3,
                       flexShrink: 0,
                     }}
@@ -230,6 +224,41 @@ export default function LeftNav() {
             })}
           </div>
         )}
+
+        {/* 历史轨迹 */}
+        <div style={{ padding: '4px 16px 0', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+          历史轨迹
+        </div>
+        <div style={{ padding: '4px 0' }}>
+          {savedTrails.length === 0 && (
+            <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
+              暂无
+            </div>
+          )}
+          {savedTrails.slice(0, 5).map(trail => (
+            <div key={trail.id} style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '4px 16px',
+              fontSize: 11,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-ui)',
+            }}
+            onClick={() => {
+              const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
+              useGraphStore.setState({ browsePath: ids });
+              if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
+            }}
+            >
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>
+              <button onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </aside>
   );

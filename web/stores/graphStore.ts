@@ -75,6 +75,7 @@ interface GraphState {
   setFocusMode: (on: boolean) => void;
   setCurrentScale: (scale: number) => void;
   clearBrowsePath: () => void;
+  setBrowsePathShow: (show: boolean) => void;
   removeFromBrowsePath: (id: string) => void;
   saveTrail: (name: string) => void;
   loadTrails: () => void;
@@ -142,6 +143,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setCurrentScale: (scale) => set({ currentScale: scale }),
 
   clearBrowsePath: () => set({ browsePath: [] }),
+  setBrowsePathShow: (show: boolean) => set({ browsePathShow: show }),
   removeFromBrowsePath: (id) => set(state => {
     const idx = state.browsePath.indexOf(id);
     if (idx === -1) return {};
