@@ -14,6 +14,14 @@ describe('convertHtmlToMarkdown', () => {
     expect(result?.frontmatter.tags).toContain('AI链接笔记');
   });
 
+  it('filters out tags containing "null"', () => {
+    const html = `<html><body><h1>T</h1><hr><span class="tag">AI链接笔记</span><span class="tag">null xxx</span></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    expect(result!.frontmatter.tags).toContain('AI链接笔记');
+    expect(result!.frontmatter.tags).not.toContain('null xxx');
+    expect(result!.frontmatter.tags).not.toContain('null...');
+  });
+
   it('extracts date from 创建于 pattern', () => {
     const html = `<html><body><h1>T</h1><p>创建于：2026-01-11</p><hr><p>Body</p></body></html>`;
     const result = convertHtmlToMarkdown(html, 'test-id');

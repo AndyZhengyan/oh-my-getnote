@@ -402,7 +402,7 @@ export function convertHtmlToMarkdown(
   const tagMatches = [...html.matchAll(/<span class=["']tag["'][^>]*>([\s\S]*?)<\/span>/gi)];
   let tags: string[] = tagMatches
     .map(m => stripTags(m[1]).trim())
-    .filter(t => t.length > 0 && t !== 'null');
+    .filter(t => t.length > 0 && !t.toLowerCase().includes('null'));
   const type = tags[0] || '其他';
   if (tags.length === 0) tags = [type];
 
