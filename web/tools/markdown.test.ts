@@ -106,6 +106,17 @@ describe('convertHtmlToMarkdown', () => {
     expect(between.trim()).toBe(attachment);
   });
 
+  it('handles <br> inside list items as sub-lines', () => {
+    const html = `<html><body><h1>T</h1><hr><ul><li>第一点<br>次行内容</li></ul></body></html>`;
+    const result = convertHtmlToMarkdown(html, 'test-id');
+    const body = result!.body;
+    expect(body).toContain('- 第一点');
+    expect(body).toContain('次行内容');
+    const pointIdx = body.indexOf('第一点');
+    const subIdx = body.indexOf('次行内容');
+    expect(subIdx).toBeGreaterThan(pointIdx);
+  });
+
   it('inlines image refs into body before main content', () => {
     const html = `<html><body><h1>T</h1><hr><div class="attachment"><img src="images/test.jpg"/></div><p>正文</p></body></html>`;
     const result = convertHtmlToMarkdown(html, 'test-id');

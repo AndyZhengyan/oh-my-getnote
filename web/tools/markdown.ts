@@ -119,9 +119,19 @@ function convertOl(html: string): string {
       // The second replace's inner capture group handles the case where a nested <li> opens
       // before any closing tag is found (greedy capture), then trims back to the innermost.
       const inner = item.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
-      const content = inline(inner);
-      const nested = convertListContent(item);
-      const lines = nested.split('\n').map((l, j) => j === 0 ? `1. ${content}` : `   ${l}`);
+      const contentLines = inline(inner).split('\n').filter(l => l.trim());
+      // P2-6: pass inner (not item) so convertListContent doesn't duplicate the li text.
+      // Also strip <li> tags so it only sees nested ol/ul content.
+      const itemInnerForNested = inner.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
+      const nested = convertListContent(`<li>${itemInnerForNested}</li>`);
+      const nestedLines = nested.split('\n');
+      // contentLines[0] gets "1. " prefix; contentLines[1..n] get indent
+      const listLines: string[] = [];
+      contentLines.forEach((line, i) => {
+        if (i === 0) listLines.push(`1. ${line}`);
+        else listLines.push(`   ${line}`);
+      });
+      const lines = [...listLines, ...nestedLines];
       return lines.join('\n');
     })
     .join('\n');
@@ -132,11 +142,19 @@ function convertUl(html: string): string {
   const items = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
   return items
     .map(item => {
-      // Same fix as convertOl: pass HTML content to inline() instead of stripTags()
       const inner = item.replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
-      const content = inline(inner);
-      const nested = convertListContent(item);
-      const lines = nested.split('\n').map((l, i) => i === 0 ? `- ${content}` : `  ${l}`);
+      const contentLines = inline(inner).split('\n').filter(l => l.trim());
+      // P2-6: pass inner content (not item) to avoid duplicating li text in convertListContent.
+      // Also strip <li> tags so it only sees nested ol/ul content.
+      const itemInnerForNested = inner.replace(/<li[^>]*>([\s\S]*)<\/li>/i, '$1').replace(/<li[^>]*>([\s\S]*?)<\/li>/i, '$1');
+      const nested = convertListContent(`<li>${itemInnerForNested}</li>`);
+      const nestedLines = nested.split('\n');
+      const listLines: string[] = [];
+      contentLines.forEach((line, i) => {
+        if (i === 0) listLines.push(`- ${line}`);
+        else listLines.push(`   ${line}`);
+      });
+      const lines = [...listLines, ...nestedLines];
       return lines.join('\n');
     })
     .join('\n');
@@ -156,7 +174,9 @@ function convertListContent(html: string): string {
     else parts.push(convertUl(listContent));
     rest = rest.slice(match.index! + match[0].length);
   }
-  if (rest.trim()) parts.push(inline(rest));
+  // P2-6: only include trailing text if there's actual nested list content.
+  // Text-only content (without a nested list) is handled by the caller (convertOl/convertUl).
+  if (rest.trim() && parts.length > 0) parts.push(inline(rest));
   return parts.join('\n');
 }
 
