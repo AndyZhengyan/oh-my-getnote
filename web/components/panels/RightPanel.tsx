@@ -25,6 +25,54 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// 链路感知推荐算法
+function getPathAwareRecommendations(
+  browsePath: string[],
+  selectedNodeId: string | null,
+  graphIndex: { index: Record<string, { connections: Array<{ noteId: string; score: number }>; title?: string; domain?: string }> } | null,
+): Array<{ noteId: string; score: number; title: string; domain: string }> {
+  if (!graphIndex) return [];
+
+  if (browsePath.length === 0) {
+    // 降级: 单节点推荐
+    if (!selectedNodeId) return [];
+    const conns = graphIndex.index[selectedNodeId]?.connections ?? [];
+    return conns.slice(0, 10).map(c => ({
+      noteId: c.noteId,
+      score: c.score,
+      title: graphIndex.index[c.noteId]?.title ?? '',
+      domain: graphIndex.index[c.noteId]?.domain ?? '',
+    }));
+  }
+
+  // 指数衰减加权 (decay=0.5, 近节点权重高)
+  const DECAY = 0.5;
+  const scores: Record<string, number> = {};
+
+  browsePath.forEach((nodeId, i) => {
+    const weight = Math.pow(DECAY, browsePath.length - 1 - i);
+    const conns = graphIndex.index[nodeId]?.connections ?? [];
+    conns.forEach(conn => {
+      scores[conn.noteId] = (scores[conn.noteId] ?? 0) + conn.score * weight;
+    });
+  });
+
+  // 排除已访问节点
+  const exclude = new Set(browsePath);
+  if (selectedNodeId) exclude.add(selectedNodeId);
+
+  return Object.entries(scores)
+    .filter(([noteId]) => !exclude.has(noteId))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([noteId, rawScore]) => ({
+      noteId,
+      score: rawScore / browsePath.length,
+      title: graphIndex.index[noteId]?.title ?? '',
+      domain: graphIndex.index[noteId]?.domain ?? '',
+    }));
+}
+
 const DOMAIN_COLORS: Record<string, string> = {
   'AI 核心技术与模型':   '#6366F1',
   'AI 产业生态与巨头':  '#8B5CF6',
@@ -37,7 +85,7 @@ const DOMAIN_COLORS: Record<string, string> = {
 };
 
 export default function RightPanel() {
-  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode } = useGraphStore();
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath } = useGraphStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [note, setNote] = useState<NoteContent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -225,7 +273,7 @@ export default function RightPanel() {
           )}
         </div>
 
-        {/* Footer: AI button + connections */}
+        {/* Footer: AI button + path-aware recommendations */}
         <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', fontFamily: 'var(--font-ui)' }}>
           {!aiSummary && !aiLoading && (
             <button onClick={handleAISummary} style={{
@@ -239,17 +287,23 @@ export default function RightPanel() {
               <Sparkles size={13} />✨ AI 摘要
             </button>
           )}
-          {entry.connections.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6, fontWeight: 600 }}>
-                相似笔记 ({entry.connections.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {entry.connections.slice(0, 10).map(conn => {
-                  const target = graphIndex.index[conn.noteId];
-                  if (!target) return null;
-                  return (
-                    <div key={conn.noteId} onClick={() => selectNode(conn.noteId)} style={{
+
+          {/* 链路感知推荐 */}
+          {(() => {
+            const recommendations = getPathAwareRecommendations(
+              browsePath ?? [],
+              selectedNodeId,
+              graphIndex
+            );
+            if (recommendations.length === 0) return null;
+            return (
+              <>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6, fontWeight: 600 }}>
+                  {browsePath?.length ? '✨ 链路推荐' : '相似笔记'} ({recommendations.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {recommendations.map(rec => (
+                    <div key={rec.noteId} onClick={() => selectNode(rec.noteId)} style={{
                       padding: '7px 10px',
                       background: 'rgba(0,0,0,0.03)',
                       borderRadius: 6,
@@ -260,25 +314,25 @@ export default function RightPanel() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 8,
-                      borderLeft: `2px solid ${DOMAIN_COLORS[target.domain] ?? '#9CA3AF'}`,
+                      borderLeft: `2px solid ${DOMAIN_COLORS[rec.domain] ?? '#9CA3AF'}`,
                       fontFamily: 'var(--font-ui)',
                       transition: 'background 0.12s',
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-light)'; handleRecHover(conn.noteId, e); }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.03)'; handleRecMouseLeave(); }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-light)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.03)'; }}
                     >
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {target.title}
+                        {rec.title}
                       </span>
                       <span style={{ color: 'var(--text-muted)', fontSize: 11, flexShrink: 0 }}>
-                        {Math.round(conn.score * 100)}%
+                        {Math.round(rec.score * 100)}%
                       </span>
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </motion.aside>
 
