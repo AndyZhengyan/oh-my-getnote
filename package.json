@@ -13,15 +13,17 @@
     "test": "cd web && npx vitest run",
     "test:watch": "cd web && npx vitest",
     "lint": "cd web && npx eslint .",
-    "build": "cd web && npx next build",
+    "build": "npx tsc && cd web && npx next build",
     "typecheck": "cd web && npx tsc --noEmit",
-    "backfill": "npx tsx scripts/backfill.ts"
+    "backfill": "npx tsx scripts/backfill.ts",
+    "convert": "npx tsx tools/convert.ts"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }
