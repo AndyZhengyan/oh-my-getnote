@@ -216,6 +216,40 @@ describe('graphStore — trajectory features', () => {
     expect(parsed[0].steps[0].noteId).toBe('node-p');
     expect(parsed[0].steps[1].noteId).toBe('node-q');
   });
+
+  it('saveTrail with empty name does nothing', () => {
+    const store = useGraphStore.getState();
+    store.selectNode('node-a');
+    store.saveTrail('');
+
+    expect(useGraphStore.getState().savedTrails).toHaveLength(0);
+  });
+
+  it('saveTrail with whitespace-only name does nothing', () => {
+    const store = useGraphStore.getState();
+    store.selectNode('node-a');
+    store.saveTrail('   ');
+
+    expect(useGraphStore.getState().savedTrails).toHaveLength(0);
+  });
+
+  it('loadTrails called twice replaces the list (not duplicates)', () => {
+    mockStorage.memex_trails = JSON.stringify([{
+      id: 'trail-1', name: 'First', createdAt: '2026-01-01T00:00:00.000Z',
+      steps: [{ noteId: 'n1', timestamp: '2026-01-01T00:00:00.000Z' }],
+    }]);
+    const store = useGraphStore.getState();
+    store.loadTrails();
+    expect(useGraphStore.getState().savedTrails).toHaveLength(1);
+
+    mockStorage.memex_trails = JSON.stringify([{
+      id: 'trail-2', name: 'Second', createdAt: '2026-01-02T00:00:00.000Z',
+      steps: [{ noteId: 'n2', timestamp: '2026-01-02T00:00:00.000Z' }],
+    }]);
+    store.loadTrails();
+    expect(useGraphStore.getState().savedTrails).toHaveLength(1);
+    expect(useGraphStore.getState().savedTrails[0].name).toBe('Second');
+  });
 });
 
 describe('browsePath — auto-trace behavior', () => {

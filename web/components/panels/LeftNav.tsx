@@ -32,7 +32,7 @@ export default function LeftNav() {
     browsePath, browsePathShow, setBrowsePathShow,
     clearBrowsePath, removeFromBrowsePath,
     savedTrails,
-    playTrail, stopTrailPlayback, deleteTrail,
+    playTrail, stopTrailPlayback, deleteTrail, saveTrail,
   } = useGraphStore();
 
   if (!graphIndex) return null;
@@ -148,7 +148,9 @@ export default function LeftNav() {
           <Bookmark size={13} />
           探索路径 ({browsePath.length})
           {browsePath.length > 0 && (
-            <button
+            <span
+              role="button"
+              tabIndex={0}
               onClick={e => { e.stopPropagation(); clearBrowsePath(); }}
               title="清空轨迹"
               style={{
@@ -165,7 +167,7 @@ export default function LeftNav() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
             >
               <X size={12} />
-            </button>
+            </span>
           )}
         </button>
 
@@ -222,6 +224,32 @@ export default function LeftNav() {
                 </div>
               );
             })}
+            {browsePath.length > 0 && (
+              <button
+                onClick={() => {
+                  const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+                  saveTrail(`探索 ${date}`);
+                }}
+                style={{
+                  width: 'calc(100% - 32px)',
+                  margin: '4px 16px 0',
+                  padding: '5px 8px',
+                  background: 'var(--accent-light)',
+                  border: '1px solid var(--accent-mid)',
+                  borderRadius: 6,
+                  color: 'var(--accent)',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                }}
+              >
+                保存轨迹
+              </button>
+            )}
           </div>
         )}
 
