@@ -13,7 +13,7 @@
     "test": "cd web && npx vitest run",
     "test:watch": "cd web && npx vitest",
     "lint": "cd web && npx eslint .",
-    "build": "cp -r lib/linker web/lib/linker && npx tsc && cd web && npx next build",
+    "build": "cd web && npx next build",
     "typecheck": "cd web && npx tsc --noEmit",
     "backfill": "npx tsx scripts/backfill.ts",
     "convert": "npx tsx tools/convert.ts"

@@ -1,8 +1,7 @@
-// lib/embedding.ts
-// Reuses embedNotes from dist/linker/semantic.js (committed to web/lib/linker/ for Turbopack)
-// Types declared in web/lib/linker/semantic.d.ts
+// web/lib/embedding.ts — API route wrapper around linker embedding
+// Resolves linker relative to this file: web/lib/linker/semantic.js
 
-import { embedNotes } from '../web/lib/linker/semantic.js';
+import { embedNotes } from './linker/semantic.js';
 
 export async function embedText(text: string): Promise<number[]> {
   const note = { id: 'temp', title: '', contentSnippet: text };
