@@ -1,33 +1,33 @@
 # Memex for Getnote
 
-> _"The human mind does not work that way. It operates by association."_ — Vannevar Bush, 1945
+> _"人脑不是那样运作的。它靠联想运转。"_ — 范内瓦尔·布什，1945
 
-In 1945, Vannevar Bush imagined a machine called **Memex** — where every piece of knowledge would be linked to others by a trail of associations, so the mind could explore ideas not in a rigid hierarchy, but along the paths of its own thinking.
+1945 年，范内瓦尔·布什构想了 **Memex** 一台让所有知识相互链接的机器——人们可以沿着思想的水迹（trail），在知识之间自由探索，而不必困在僵化的分类里。
 
-Seventy-five years later, we built it.
-
----
-
-**Memex for Getnote** turns your [GetNote](https://www.biji.com) notes into an interactive knowledge graph. Follow trails of association. Let the connections surprise you.
+七十五年后，我们把它做出来了。
 
 ---
 
-## From GetNote to Knowledge Graph in 3 Steps
+**Memex for Getnote** 把你的 [GetNote](https://www.biji.com) 笔记变成一张可交互的知识图谱。沿轨迹探索，让关联自己浮现。
+
+---
+
+## 从 GetNote 到知识图谱，三步完成
 
 ```
 GetNote (www.biji.com)
     │
-    │ ① Export as HTML
+    │  ① 导出 HTML
     ▼
 source/*.html
     │
-    │ ② Run the converter
+    │  ② 运行转换器
     │ npx tsx tools/convert.ts <source-dir> [--out .]
     ▼
 notes/*.md         graph-index.json
-(Obsidian-style)   (graph connections)
+(Obsidian 风格)   （图谱关联索引）
     │
-    │ ③ Launch the graph
+    │  ③ 启动图谱
     │ cd web && npm run dev
     ▼
   📊 知识图谱
@@ -36,69 +36,69 @@ notes/*.md         graph-index.json
 
 ---
 
-## What You Get
+## 核心能力
 
 **AI 智能推荐**  
-Click any node — AI recommends the most related notes, surfacing connections you didn't know existed.
+点击任意节点，AI 自动推荐最相关的笔记，发现你没想到的关联。
 
 **探索轨迹**  
-Your click path is recorded as a trail of footsteps. Revisit your thinking later. Share the path with others.
+你的点击路径被记录下来，像走过的一串脚印，帮你回顾研究思路，也可以分享给他人。
 
 **向量多跳搜索**  
-Not just direct neighbors. Find associations two or three hops away — the indirect links that make an idea network powerful.
+不仅找直接相邻的节点，还能发现两步、三步以外的间接关联——让那些藏在深处的连接浮出水面。
 
 **知识过滤**  
-Filter the graph by domain and type. Focus on one topic at a time, then follow the thread wherever it leads.
+按领域、类型筛选图谱，聚焦当前研究主题，然后沿着线索自由探索。
 
 ---
 
-## For GetNote Users
+## 给 GetNote 用户
 
-Your notes on [GetNote](https://www.biji.com) hold years of accumulated knowledge — but scattered across HTML files, connections invisible, context lost. **Memex for Getnote** transforms them into a living graph where relationships emerge naturally, not through rigid folders.
+你在 [GetNote](https://www.biji.com) 积累了大量个人知识，但散落在一个个 HTML 文件里，关联看不见，思路难回顾。**Memex for Getnote** 把它们变成一张可以探索的图谱——不是强行分类，而是让关联自然浮现。
 
 ---
 
-## Quick Start
+## 快速上手
 
 ```bash
-# 1. Export from GetNote → save as HTML to source/
-#    (GetNote → Settings → Export → HTML)
+# 1. 从 GetNote 导出 HTML → 保存到 source/
+#    GetNote → 设置 → 导出 → HTML
 
-# 2. Install
+# 2. 安装依赖
 npm install && cd web && npm install && cd ..
 
-# 3. Set up environment
+# 3. 配置环境变量
 cp web/.env.local.example web/.env.local
-# Add your OPENAI_API_KEY (OpenAI or OpenRouter)
+# 编辑 web/.env.local，填入 OPENAI_API_KEY（支持 OpenAI 或 OpenRouter）
 
-# 4. Convert notes
+# 4. 运行转换器
 npx tsx tools/convert.ts source/ --out .
 
-# 5. Launch
+# 5. 启动图谱
 cd web && npm run dev
-# → Open http://localhost:3000/graph
+# → 打开 http://localhost:3000/graph
 ```
 
 ---
 
-## Tech Stack
+## 技术栈
 
-| Layer | Technology |
+| 层级 | 技术 |
 |---|---|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS v4 |
-| Graph | react-force-graph-2d |
+| 框架 | Next.js 16 (App Router) |
+| 语言 | TypeScript |
+| 样式 | Tailwind CSS v4 |
+| 图谱 | react-force-graph-2d |
 | AI | OpenAI SDK / OpenRouter |
-| Vectors | LanceDB |
-| Tests | Vitest + Playwright |
+| 向量 | LanceDB |
+| 测试 | Vitest + Playwright |
 
 ---
 
-## Contributing
+## 如何贡献
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
+参见 [CONTRIBUTING.md](CONTRIBUTING.md) · [行为准则](CODE_OF_CONDUCT.md)
 
-## License
+## 开源许可
 
 MIT © Andy Zhengyan
