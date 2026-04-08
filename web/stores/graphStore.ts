@@ -120,7 +120,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
-    if (state.browsePath.includes(id)) {
+    if (id && state.browsePath.includes(id)) {
       const idx = state.browsePath.indexOf(id);
       if (idx === 0) {
         // Clicking the first node again returns to empty path
@@ -129,7 +129,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         set({ selectedNodeId: id, browsePath: state.browsePath.slice(0, idx + 1) });
       }
     } else {
-      set({ selectedNodeId: id, browsePath: [...state.browsePath, id] });
+      set({ selectedNodeId: id, browsePath: id ? [...state.browsePath, id] : [] });
     }
   },
   focusNode: (id) => set(state => ({

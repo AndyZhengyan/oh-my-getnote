@@ -223,10 +223,6 @@ describe('browsePath — auto-trace behavior', () => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
     vi.clearAllTimers();
     useGraphStore.setState({
-      trailRecording: undefined as unknown as boolean,
-      currentTrail: undefined as unknown as string[],
-    });
-    useGraphStore.setState({
       browsePath: [],
       savedTrails: [],
       selectedNodeId: null,
