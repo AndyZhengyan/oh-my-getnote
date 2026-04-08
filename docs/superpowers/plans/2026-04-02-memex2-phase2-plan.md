@@ -3,6 +3,8 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
 
+**Status:** ✅ 已完成
+
 **Goal:** Next.js App Router 脚手架完成，Strategic Dark Tech Design Tokens 就位，三栏布局骨架可运行。
 
 **Architecture:** Next.js 15 (App Router) + react-force-graph-2d + Zustand + Tailwind CSS + CSS Variables

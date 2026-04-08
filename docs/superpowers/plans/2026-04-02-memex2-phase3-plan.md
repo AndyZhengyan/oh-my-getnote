@@ -4,6 +4,8 @@
 > **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
 > **基于**: `phase2/nextjs-scaffold` 分支
 
+**Status:** ✅ 已完成
+
 **Goal:** 解决"大毛线团"问题——景深模糊（按距离透明度递减）、语义缩放（远/中/近景）、局部聚焦模式（双击展开子图）。
 
 ---

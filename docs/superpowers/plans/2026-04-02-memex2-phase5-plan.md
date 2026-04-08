@@ -4,6 +4,8 @@
 > **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
 > **基于**: `phase2/nextjs-scaffold` 分支（已包含 Phase 2 + Phase 3）
 
+**Status:** ✅ 已完成
+
 **Goal:** 完整三栏交互——左侧目录导航、右侧毛玻璃详情面板（Markdown渲染）、搜索高亮。
 
 ---

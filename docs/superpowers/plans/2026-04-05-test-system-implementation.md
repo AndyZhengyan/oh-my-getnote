@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** ✅ 已完成
+
 **Goal:** 搭建完整 CI + TDD 测试体系：lint + test-and-build 双阶段 CI，lint 失败自动建 issue，E2E 覆盖关键路径。
 
 **Architecture:** CI 分 lint（可选）和 test-and-build（必需）两阶段；单元测试与源码同目录 co-locate；vitest 从 `web/` 发现测试文件。

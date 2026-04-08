@@ -3,6 +3,8 @@
 > **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
 > **基于**: `phase2/nextjs-scaffold` 分支（Phase 2–5 已完成）
 
+**Status:** ✅ 已完成
+
 **Goal:** 轨迹记录与回放、Framer Motion 面板动画、细节打磨。
 
 ---

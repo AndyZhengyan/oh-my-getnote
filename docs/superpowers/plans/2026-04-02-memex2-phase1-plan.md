@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** ✅ 已完成
+
 **Goal:** 将 Get笔记导出的 HTML 文件批量转换为 Markdown + frontmatter 格式，生成 `graph-index.json` 图谱索引。
 
 **Architecture:** 复用现有 `src/parser/` HTML 解析、`src/linker/semantic.ts` 语义关联计算、`src/linker/projector.ts` PCA 降维；新增 `tools/markdown.ts` 处理 HTML→Markdown 转换（含 frontmatter 生成）、`tools/indexer.ts` 生成 `graph-index.json`。CLI 入口 `tools/convert.ts`。

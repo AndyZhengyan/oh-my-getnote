@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** ✅ 已完成
+
 **Goal:** Add persistent vector storage (LanceDB) and multi-hop search capability to the knowledge graph, enabling users to select multiple notes and discover the most relevant next-hop candidates.
 
 **Architecture:**

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** ✅ 已完成
+
 **Goal:** 将 `my-getnote-kg` 目录统一重命名为 `oh-my-getnote`，代码/文档中所有旧引用已确认无需修改。
 
 **Architecture:** grep 确认结果显示 display name（Oh My Getnote）和 package.json 均已正确，仅需修改一处文档中的目录结构示意路径，然后执行目录重命名。
