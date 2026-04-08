@@ -7,13 +7,13 @@ const SYSTEM_PROMPT = `你是一个专业的知识管理助手。请用3句话�
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 503 });
+      return NextResponse.json({ error: 'OPENAI_API_KEY not configured' });
     }
 
     const { noteId, title, content } = await req.json();
 
     if (!content || content.trim().length === 0) {
-      return NextResponse.json({ error: 'Content is empty' }, { status: 400 });
+      return NextResponse.json({ error: 'Content is empty' });
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -31,6 +31,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ summary, noteId });
   } catch (err) {
     console.error('AI summarize error:', err);
-    return NextResponse.json({ error: 'AI summarization failed' }, { status: 500 });
+    return NextResponse.json({ error: 'AI service unavailable' });
   }
 }

@@ -124,8 +124,11 @@ export default function RightPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ noteId: selectedNodeId, title: note.frontmatter.title, content: note.body }),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
+      if (!res.ok || data.error) {
+        setAiError(data.error ?? 'API error');
+        return;
+      }
       if (data.summary) {
         setAiSummary(data.summary);
         localStorage.setItem(`ai_summary_${selectedNodeId}`, data.summary);
