@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
-      - run: npx vitest run --reporter=verbose
-      - run: npx tsc --noEmit -p web/tsconfig.json
-      - run: cd web && npx next build
+      - run: npm ci && cd web && npm ci
+      - run: npm run test
+      - run: npm run typecheck
+      - run: npm run build

@@ -10,10 +10,11 @@
   "homepage": "https://github.com/AndyZhengyan/memex-for-getnote#readme",
   "private": true,
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "cd web && npx vitest run",
+    "test:watch": "cd web && npx vitest",
     "lint": "cd web && npx eslint .",
     "build": "cd web && npx next build",
+    "typecheck": "cd web && npx tsc --noEmit",
     "backfill": "npx tsx scripts/backfill.ts"
   },
   "dependencies": {
