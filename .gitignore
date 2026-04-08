@@ -23,6 +23,9 @@ web/embedding.js
 web/lancedb.js
 web/dist/
 
+# Linker JS copied from dist/linker during build
+lib/linker/
+
 # Private note content — never commit
 data/
 source/

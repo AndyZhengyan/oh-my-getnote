@@ -1,8 +1,8 @@
 // lib/embedding.ts
-// Reuses embedNotes from dist/linker/semantic.js (the single embedding implementation)
-// Types declared in dist/linker/semantic.d.ts
+// Reuses embedNotes from linker/semantic.js (copied into lib/linker/ during build)
+// Types declared in linker/semantic.d.ts
 
-import { embedNotes } from '../dist/linker/semantic.js';
+import { embedNotes } from './linker/semantic.js';
 
 export async function embedText(text: string): Promise<number[]> {
   const note = { id: 'temp', title: '', contentSnippet: text };

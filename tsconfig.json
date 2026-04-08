@@ -12,5 +12,5 @@
     "resolveJsonModule": true
   },
   "include": ["lib/**/*"],
-  "exclude": ["node_modules", "web", "notes", "data", "source", "docs", "kg-site", "images", "scripts", "dist/**/*"]
+  "exclude": ["node_modules", "web", "notes", "data", "source", "docs", "kg-site", "images", "scripts", "dist/**/*", "lib/linker/**/*"]
 }
