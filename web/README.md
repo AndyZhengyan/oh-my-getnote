@@ -1,4 +1,4 @@
-# Oh My Getnote
+# Memex for Getnote
 
 A knowledge graph application that turns your markdown notes into an interactive, searchable, and AI-powered graph of connected ideas.
 
