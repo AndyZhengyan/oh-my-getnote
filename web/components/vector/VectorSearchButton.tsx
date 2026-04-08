@@ -3,7 +3,7 @@ import { useGraphStore } from '@/stores/graphStore';
 import { Sparkles } from 'lucide-react';
 
 export default function VectorSearchButton() {
-  const { multiHopPanelOpen, setMultiHopPanelOpen, multiHopIds } = useGraphStore();
+  const { multiHopPanelOpen, setMultiHopPanelOpen, browsePath } = useGraphStore();
 
   return (
     <button
@@ -13,7 +13,7 @@ export default function VectorSearchButton() {
         background: multiHopPanelOpen ? 'var(--accent-light)' : 'transparent',
         border: `1px solid ${multiHopPanelOpen ? 'var(--accent-mid)' : 'transparent'}`,
         borderRadius: 6,
-        color: multiHopIds.length > 0 ? 'var(--accent)' : 'var(--text-secondary)',
+        color: browsePath.length > 0 ? 'var(--accent)' : 'var(--text-secondary)',
         padding: '4px 10px',
         fontSize: 12,
         fontFamily: 'var(--font-ui)',
@@ -25,7 +25,7 @@ export default function VectorSearchButton() {
       }}
     >
       <Sparkles size={12} />
-      {multiHopIds.length > 0 && (
+      {browsePath.length > 0 && (
         <span style={{
           background: 'var(--accent)',
           color: '#fff',
@@ -34,7 +34,7 @@ export default function VectorSearchButton() {
           fontSize: 10,
           fontWeight: 700,
         }}>
-          {multiHopIds.length}
+          {browsePath.length}
         </span>
       )}
     </button>

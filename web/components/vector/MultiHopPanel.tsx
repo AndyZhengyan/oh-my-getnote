@@ -4,26 +4,26 @@ import { useGraphStore } from '@/stores/graphStore';
 
 export default function MultiHopPanel() {
   const {
-    multiHopIds, multiHopPanelOpen, setMultiHopIds, removeMultiHopId, graphIndex, selectNode,
+    browsePath, multiHopPanelOpen, setBrowsePath, removeFromBrowsePath, graphIndex, selectNode,
   } = useGraphStore();
   const [results, setResults] = useState<Array<{ id: string; title: string; type: string; score: number }>>([]);
   const [loading, setLoading] = useState(false);
 
   if (!multiHopPanelOpen) return null;
 
-  const selectedNotes = multiHopIds
+  const selectedNotes = browsePath
     .map(id => graphIndex?.index[id])
     .filter(Boolean);
 
   const handleSearch = async () => {
-    if (multiHopIds.length === 0) return;
+    if (browsePath.length === 0) return;
     setLoading(true);
     try {
       const texts = selectedNotes.map(n => `${(n as { title: string }).title}`);
       const res = await fetch('/api/vector/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, limit: 10, excludeIds: multiHopIds }),
+        body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
       });
       const data = await res.json();
       setResults(data.results ?? []);
@@ -53,11 +53,11 @@ export default function MultiHopPanel() {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>&#x1f52e; 多跳搜索</span>
-        <button onClick={handleSearch} disabled={multiHopIds.length === 0 || loading}
+        <button onClick={handleSearch} disabled={browsePath.length === 0 || loading}
           style={{
             fontSize: 12, padding: '4px 10px',
-            background: multiHopIds.length > 0 && !loading ? 'var(--accent)' : 'var(--bg-elevated)',
-            color: multiHopIds.length > 0 && !loading ? '#fff' : 'var(--text-muted)',
+            background: browsePath.length > 0 && !loading ? 'var(--accent)' : 'var(--bg-elevated)',
+            color: browsePath.length > 0 && !loading ? '#fff' : 'var(--text-muted)',
             border: 'none', borderRadius: 4, cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.5 : 1,
           }}>
@@ -67,12 +67,12 @@ export default function MultiHopPanel() {
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>当前组合（点击移除）：</div>
-        {multiHopIds.length === 0 ? (
+        {browsePath.length === 0 ? (
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>从图谱选中笔记加入</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {selectedNotes.map((n, i) => n && (
-              <div key={multiHopIds[i]} style={{
+              <div key={browsePath[i]} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '4px 8px', background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)', borderRadius: 6, fontSize: 12,
@@ -80,10 +80,10 @@ export default function MultiHopPanel() {
               }}>
                 <span
                   style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  onClick={() => selectNode(multiHopIds[i])}>
+                  onClick={() => selectNode(browsePath[i])}>
                   &#x1f517; {(n as { title: string }).title}
                 </span>
-                <button onClick={() => removeMultiHopId(multiHopIds[i])}
+                <button onClick={() => removeFromBrowsePath(browsePath[i]!)}
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, padding: '0 0 0 8px' }}>
                   &#x2715;
                 </button>
@@ -94,7 +94,7 @@ export default function MultiHopPanel() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <button onClick={() => setMultiHopIds([])}
+        <button onClick={() => setBrowsePath([])}
           style={{
             fontSize: 12, padding: '4px 10px', background: 'transparent',
             border: '1px solid var(--border)', color: 'var(--text-secondary)',

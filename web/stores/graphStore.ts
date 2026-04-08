@@ -77,19 +77,15 @@ interface GraphState {
   clearBrowsePath: () => void;
   setBrowsePathShow: (show: boolean) => void;
   removeFromBrowsePath: (id: string) => void;
+  setBrowsePath: (path: string[]) => void;
   saveTrail: (name: string) => void;
   loadTrails: () => void;
   deleteTrail: (id: string) => void;
   playTrail: (id: string) => void;
   stopTrailPlayback: () => void;
-  // Multi-hop
-  multiHopIds: string[];
+  // Panel visibility
   multiHopPanelOpen: boolean;
-  addMultiHopId: (id: string) => void;
-  removeMultiHopId: (id: string) => void;
   setMultiHopPanelOpen: (open: boolean) => void;
-  // Internal
-  setMultiHopIds: (ids: string[]) => void;
 }
 
 function loadFromStorage(): Trail[] {
@@ -112,7 +108,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   browsePathShow: false,
   savedTrails: [],
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
-  multiHopIds: [], multiHopPanelOpen: false,
+  multiHopPanelOpen: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -149,6 +145,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     if (idx === -1) return {};
     return { browsePath: state.browsePath.slice(0, idx) };
   }),
+  setBrowsePath: (path) => set({ browsePath: path }),
   saveTrail: (name) => {
     const state = get();
     if (!name.trim()) return;
@@ -209,13 +206,5 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     set({ highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false });
   },
 
-  // Multi-hop
-  addMultiHopId: (id) => set(state => ({
-    multiHopIds: state.multiHopIds.includes(id) ? state.multiHopIds : [...state.multiHopIds, id],
-  })),
-  removeMultiHopId: (id) => set(state => ({
-    multiHopIds: state.multiHopIds.filter(x => x !== id),
-  })),
   setMultiHopPanelOpen: (open) => set({ multiHopPanelOpen: open }),
-  setMultiHopIds: (ids) => set({ multiHopIds: ids }),
 }));

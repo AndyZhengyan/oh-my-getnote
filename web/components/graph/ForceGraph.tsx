@@ -123,7 +123,6 @@ export default function ForceGraph() {
     setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
     browsePath,
-    multiHopIds, addMultiHopId, removeMultiHopId,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -287,14 +286,8 @@ export default function ForceGraph() {
     const level = levelMap.get(node.id) ?? 'peripheral';
     if (level === 'ghost') return;
     fgRef.current?.resumeAnimation();
-    // Toggle node in/out of multi-hop selection
-    if (multiHopIds.includes(node.id)) {
-      removeMultiHopId(node.id);
-    } else {
-      addMultiHopId(node.id);
-    }
     selectNode(node.id);
-  }, [multiHopIds, addMultiHopId, removeMultiHopId, selectNode, levelMap]);
+  }, [selectNode, levelMap]);
 
   const handleNodeRightClick = useCallback((node: GraphNode) => {
     fgRef.current?.resumeAnimation();
@@ -409,8 +402,8 @@ export default function ForceGraph() {
             ctx.stroke();
           }
 
-          // Multi-hop selection ring
-          if (multiHopIds.includes(n.id)) {
+          // Multi-hop selection ring (browsePath nodes)
+          if (browsePath.includes(n.id)) {
             ctx.globalAlpha = Math.max(visual.alpha, 0.5);
             ctx.strokeStyle = '#F59E0B';
             ctx.lineWidth = 2;
