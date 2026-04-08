@@ -15,18 +15,22 @@ export default function GraphPage() {
   const graphIndex = useGraphStore((s) => s.graphIndex);
   const setGraphIndex = useGraphStore((s) => s.setGraphIndex);
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
+  const loadTrails = useGraphStore((s) => s.loadTrails);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loaded) {
       loadGraphIndex()
-        .then(setGraphIndex)
+        .then(index => {
+          setGraphIndex(index);
+          loadTrails(); // Restore saved trails from localStorage
+        })
         .catch(err => {
           console.error('Failed to load graph:', err);
           setError('加载图谱失败，请刷新页面重试');
         });
     }
-  }, [loaded, setGraphIndex]);
+  }, [loaded, setGraphIndex, loadTrails]);
 
   if (error) {
     return (
