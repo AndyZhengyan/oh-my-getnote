@@ -9,6 +9,11 @@ dist/
 .playwright-mcp/
 .superpowers/
 
+# Claude Code local config — machine-specific, never commit
+.claude/
+playwright-report/
+test-results/
+
 # Private note content — never commit
 data/
 source/

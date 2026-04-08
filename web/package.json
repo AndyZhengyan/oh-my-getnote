@@ -1,6 +1,13 @@
 {
   "name": "web",
   "version": "0.1.0",
+  "description": "Oh My Getnote web app — knowledge graph visualization and search",
+  "author": "Andy Zhengyan",
+  "repository": { "type": "git", "url": "https://github.com/AndyZhengyan/oh-my-getnote.git" },
+  "license": "MIT",
+  "keywords": ["knowledge-graph", "nextjs", "ai", "memex"],
+  "bugs": { "url": "https://github.com/AndyZhengyan/oh-my-getnote/issues" },
+  "homepage": "https://github.com/AndyZhengyan/oh-my-getnote#readme",
   "private": true,
   "scripts": {
     "dev": "next dev",

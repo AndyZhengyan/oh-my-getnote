@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3001';
+
 test.describe('关键用户路径', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto(`${BASE_URL}/graph`);
     // 等待图谱画布加载
     await page.waitForSelector('canvas', { timeout: 15000 });
   });
@@ -43,14 +45,13 @@ test.describe('关键用户路径', () => {
     }
   });
 
-  test('轨迹记录：点击"轨迹"按钮开始记录', async ({ page }) => {
-    const trailBtn = page.getByText('轨迹');
+  test('轨迹记录：点击"探索路径"按钮展开路径面板', async ({ page }) => {
+    const trailBtn = page.locator('aside').getByText('探索路径');
     if (await trailBtn.isVisible()) {
       await trailBtn.click();
-      await page.waitForTimeout(200);
-      // 开始记录后，按钮文字变为"结束"
-      const endBtn = page.getByText('结束');
-      await expect(endBtn).toBeVisible();
+      await page.waitForTimeout(300);
+      // 展开后显示"点击图谱节点开始追踪"
+      await expect(page.getByText('点击图谱节点开始追踪')).toBeVisible();
     }
   });
 

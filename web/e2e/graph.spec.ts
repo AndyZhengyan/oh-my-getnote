@@ -47,7 +47,7 @@ test.describe('Memex 2.0 知识图谱', () => {
     await expect(page.locator('aside').locator('text=全部笔记')).toBeVisible();
     await expect(page.locator('aside').locator('text=AI 核心技术与模型')).toBeVisible();
     await expect(page.locator('aside').locator('text=笔记类型')).toBeVisible();
-    await expect(page.locator('aside').locator('text=探索轨迹')).toBeVisible();
+    await expect(page.locator('aside').locator('text=探索路径')).toBeVisible();
     // Canvas
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
@@ -139,9 +139,9 @@ test.describe('Memex 2.0 知识图谱', () => {
     await expect(page.locator('aside').first()).toBeVisible();
   });
 
-  // ── TC-7: 轨迹按钮 ────────────────────────────────────────────────────
-  test('TC-7: Toolbar 轨迹按钮可点击（不崩溃）', async ({ page }) => {
-    const trailBtn = page.getByRole('button', { name: '轨迹', exact: true });
+  // ── TC-7: 探索路径按钮 ────────────────────────────────────────────────
+  test('TC-7: LeftNav 探索路径按钮可点击（不崩溃）', async ({ page }) => {
+    const trailBtn = page.locator('aside').getByText('探索路径');
     await expect(trailBtn).toBeVisible();
     page.on('dialog', dialog => dialog.dismiss());
     await trailBtn.click();
