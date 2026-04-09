@@ -8,7 +8,6 @@ import Toolbar from '@/components/toolbar/Toolbar';
 import LeftNav from '@/components/panels/LeftNav';
 import RightPanel from '@/components/panels/RightPanel';
 import ForceGraph from '@/components/graph/ForceGraph';
-import MultiHopPanel from '@/components/vector/MultiHopPanel';
 
 export default function GraphPage() {
   const loaded = useGraphStore((s) => s.loaded);
@@ -80,7 +79,6 @@ export default function GraphPage() {
       }}>
         <ForceGraph />
       </div>
-      <MultiHopPanel />
       <RightPanel />
     </main>
   );

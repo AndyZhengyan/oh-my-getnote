@@ -35,6 +35,7 @@ interface GraphNode {
   domain: string;
   type: string;
   connections: number;
+  snippet?: string;
   x?: number;
   y?: number;
 }
@@ -107,8 +108,8 @@ export function buildLevelMap(
 function getNodeVisual(level: NodeLevel) {
   switch (level) {
     case 'focused': return { alpha: 1.0, rBase: 8, rScale: 1.0, ghost: false };
-    case 'level1':  return { alpha: 0.85, rBase: 5, rScale: 1.0, ghost: false };
-    case 'level2':  return { alpha: 0.5, rBase: 4, rScale: 0.85, ghost: false };
+    case 'level1':  return { alpha: 0.7,  rBase: 5, rScale: 1.0, ghost: false };
+    case 'level2':  return { alpha: 0.4,  rBase: 4, rScale: 0.85, ghost: false };
     case 'ghost':    return { alpha: 0.06, rBase: 2, rScale: 0.5, ghost: true };
     default:         return { alpha: 0.85, rBase: 3, rScale: 1.0, ghost: false };
   }
@@ -538,7 +539,7 @@ function buildGraphData(
     const entry = index.index[id]!;
     if (!seenNodes.has(id)) {
       seenNodes.add(id);
-      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length });
+      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length, snippet: entry.bodyPreview ?? '' });
     }
 
     // Sort by score descending and take top-N when in default view
