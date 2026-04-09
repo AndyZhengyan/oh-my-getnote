@@ -4,9 +4,6 @@
 import { useGraphStore } from '@/stores/graphStore';
 import { triggerGraphReset } from '@/stores/graphStore';
 import { Search, RotateCcw } from 'lucide-react';
-import VectorSearchButton from '@/components/vector/VectorSearchButton';
-import MultiHopPanel from '@/components/vector/MultiHopPanel';
-
 export default function Toolbar() {
   const {
     graphIndex, domainFilter, typeFilter, searchQuery,
@@ -214,11 +211,8 @@ export default function Toolbar() {
           <RotateCcw size={12} />
           重置
         </button>
-
-        <VectorSearchButton />
       </div>
     </header>
-    <MultiHopPanel />
     </>
   );
 }

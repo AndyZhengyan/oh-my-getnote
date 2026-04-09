@@ -1,8 +1,9 @@
 // web/components/panels/LeftNav.tsx
 'use client';
 
+import { useState } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
-import { Bookmark, Trash2, X } from 'lucide-react';
+import { Bookmark, Trash2, X, Sparkles } from 'lucide-react';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -33,7 +34,31 @@ export default function LeftNav() {
     clearBrowsePath, removeFromBrowsePath,
     savedTrails,
     playTrail, stopTrailPlayback, deleteTrail, saveTrail,
+    selectNode,
   } = useGraphStore();
+
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; title: string; type: string; score: number }>>([]);
+  const [searching, setSearching] = useState(false);
+
+  const handleVectorSearch = async () => {
+    if (browsePath.length === 0) return;
+    setSearching(true);
+    try {
+      const selectedNotes = browsePath.map(id => graphIndex?.index[id]).filter(Boolean);
+      const texts = selectedNotes.map(n => (n as { title: string }).title);
+      const res = await fetch('/api/vector/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
+      });
+      const data = await res.json();
+      setSearchResults(data.results ?? []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   if (!graphIndex) return null;
 
@@ -249,6 +274,64 @@ export default function LeftNav() {
               >
                 保存轨迹
               </button>
+            )}
+
+            {/* 多跳搜索 */}
+            {browsePath.length > 0 && (
+              <>
+                <button
+                  onClick={handleVectorSearch}
+                  disabled={searching}
+                  style={{
+                    width: 'calc(100% - 32px)',
+                    margin: '4px 16px 0',
+                    padding: '5px 8px',
+                    background: searching ? 'var(--bg-elevated)' : 'var(--accent)',
+                    border: '1px solid var(--accent)',
+                    borderRadius: 6,
+                    color: '#fff',
+                    fontSize: 12,
+                    fontFamily: 'var(--font-ui)',
+                    cursor: searching ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    opacity: searching ? 0.6 : 1,
+                  }}
+                >
+                  <Sparkles size={12} />
+                  {searching ? '搜索中…' : '多跳搜索'}
+                </button>
+
+                {searchResults.length > 0 && (
+                  <div style={{ marginTop: 8, padding: '0 16px 4px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      推荐结果
+                    </div>
+                    {searchResults.map(r => (
+                      <div key={r.id} style={{
+                        padding: '5px 8px',
+                        marginBottom: 3,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: 11,
+                      }}
+                      onClick={() => selectNode(r.id)}
+                      >
+                        <div style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.title}
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 1 }}>
+                          {r.type} · {(r.score * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

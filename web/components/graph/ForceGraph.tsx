@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
-import { ExternalLink } from 'lucide-react';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -36,6 +35,7 @@ interface GraphNode {
   domain: string;
   type: string;
   connections: number;
+  snippet?: string;
   x?: number;
   y?: number;
 }
@@ -108,8 +108,8 @@ export function buildLevelMap(
 function getNodeVisual(level: NodeLevel) {
   switch (level) {
     case 'focused': return { alpha: 1.0, rBase: 8, rScale: 1.0, ghost: false };
-    case 'level1':  return { alpha: 0.85, rBase: 5, rScale: 1.0, ghost: false };
-    case 'level2':  return { alpha: 0.5, rBase: 4, rScale: 0.85, ghost: false };
+    case 'level1':  return { alpha: 0.7,  rBase: 5, rScale: 1.0, ghost: false };
+    case 'level2':  return { alpha: 0.4,  rBase: 4, rScale: 0.85, ghost: false };
     case 'ghost':    return { alpha: 0.06, rBase: 2, rScale: 0.5, ghost: true };
     default:         return { alpha: 0.85, rBase: 3, rScale: 1.0, ghost: false };
   }
@@ -173,21 +173,21 @@ export default function ForceGraph() {
         if (!fgRef.current) return;
         if (nodes.length === 1) {
           // Single node: no edges to bound, zoomToFit would zoom out to near-zero.
-          // Just center it and fix zoom at 1.2 so it's visible and interactive.
+          // Center it, fix zoom at 1.2, and keep simulation frozen — no drift.
           fgRef.current.centerAt(dims.w / 2, dims.h / 2, 400);
           fgRef.current.zoom(1.2, 400);
         } else {
           const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
           fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
           fgRef.current.zoomToFit(800, padding);
+          fgRef.current.d3ReheatSimulation();
+          fgRef.current.resumeAnimation();
+          // Re-freeze after settling
+          const freezeTimer = setTimeout(() => {
+            if (fgRef.current) fgRef.current.pauseAnimation();
+          }, 2500);
+          return () => clearTimeout(freezeTimer);
         }
-        fgRef.current.d3ReheatSimulation();
-        fgRef.current.resumeAnimation();
-        // Re-freeze after settling
-        const freezeTimer = setTimeout(() => {
-          if (fgRef.current) fgRef.current.pauseAnimation();
-        }, 2500);
-        return () => clearTimeout(freezeTimer);
       }, 100);
     }
   }, [nodes, dims]);
@@ -326,37 +326,6 @@ export default function ForceGraph() {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Floating source HTML button */}
-      <button
-        onClick={() => selectedNodeId && window.open('/api/source/voicenotes-202603272159-getnotes_archive_1a71a34b40018ee0wflq7pEq/notes/' + selectedNodeId + '.html', '_blank')}
-        disabled={!selectedNodeId}
-        title="查看源文件"
-        style={{
-          position: 'absolute',
-          top: 8,
-          left: 8,
-          zIndex: 400,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: '4px 10px',
-          background: selectedNodeId ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
-          border: '1px solid var(--border)',
-          borderRadius: 20,
-          fontSize: 12,
-          color: selectedNodeId ? 'var(--text-secondary)' : 'var(--text-muted)',
-          cursor: selectedNodeId ? 'pointer' : 'not-allowed',
-          fontFamily: 'var(--font-ui)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          transition: 'opacity 0.15s, background 0.15s',
-        }}
-      >
-        <ExternalLink size={12} />
-        <span>源文件</span>
-      </button>
-
       <ForceGraph2D
         ref={fgRef}
         graphData={{ nodes, links }}
@@ -570,7 +539,7 @@ function buildGraphData(
     const entry = index.index[id]!;
     if (!seenNodes.has(id)) {
       seenNodes.add(id);
-      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length });
+      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length, snippet: entry.bodyPreview ?? '' });
     }
 
     // Sort by score descending and take top-N when in default view
