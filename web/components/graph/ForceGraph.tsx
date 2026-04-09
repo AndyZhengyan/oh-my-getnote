@@ -189,7 +189,9 @@ export default function ForceGraph() {
           fgRef.current.zoomToFit(800, padding);
           fgRef.current.d3ReheatSimulation();
           fgRef.current.resumeAnimation();
-          // Re-freeze after settling
+          // Stop simulation as soon as zoomToFit animation completes (~800ms).
+          // Without this, nodes continue drifting while alpha > 0 and will
+          // eventually drift out of the zoomed view, making nodes shrink away.
           const freezeTimer = setTimeout(() => {
             if (!fgRef.current) return;
             try {
@@ -197,7 +199,7 @@ export default function ForceGraph() {
               fgRef.current.d3Force('')?.alpha(0);
             } catch { /* ignore */ }
             fgRef.current.pauseAnimation();
-          }, 2500);
+          }, 900);
           return () => clearTimeout(freezeTimer);
         }
       }, 100);
@@ -234,8 +236,14 @@ export default function ForceGraph() {
     browsePath.slice(0, -1).map((id, i) => `${id}→${browsePath[i + 1]}`)
   ), [browsePath]);
 
-  // Node hover detection via proximity
+  // Throttle tooltip updates to avoid excessive React re-renders during mouse movement.
+  const lastMouseMoveRef = useRef(0);
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Throttle to ~60fps to reduce React re-renders without losing responsiveness
+    const now = performance.now();
+    if (now - lastMouseMoveRef.current < 16) return;
+    lastMouseMoveRef.current = now;
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect || !graphIndex) return;
 
@@ -276,6 +284,7 @@ export default function ForceGraph() {
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null);
+    fgRef.current?.resumeAnimation();
   }, []);
 
   const MAX_ZOOM = 2.5;
