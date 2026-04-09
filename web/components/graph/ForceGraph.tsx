@@ -399,20 +399,42 @@ export default function ForceGraph() {
           // Reset shadow after glow node
           ctx.shadowBlur = 0;
 
-          // Label — only for visible nodes
-          if (!visual.ghost) {
+          // Semantic zoom: content varies by zoom level
+          // - globalScale < 0.5: far view → no label, just the dot
+          // - globalScale 0.5–1.2: mid view → node title
+          // - globalScale > 1.2: close view → title + first 2 lines of body
+          if (!visual.ghost && globalScale >= 0.5) {
+            const labelColor = level === 'focused' ? '#7C3AED' : '#9CA3AF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
             const baseFontSize = 9;
             const fontSize = Math.max(7, Math.min(baseFontSize / globalScale, 11));
             ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillStyle = level === 'focused' ? '#7C3AED' : '#9CA3AF';
+            ctx.fillStyle = labelColor;
 
             // Dim labels when zoomed out, clearer when zoomed in
-            ctx.globalAlpha = visual.alpha * (globalScale > 1 ? 0.7 : 0.3 + globalScale * 0.4);
+            ctx.globalAlpha = visual.alpha * (globalScale > 1 ? 0.85 : 0.4 + globalScale * 0.5);
 
             const label = n.title.length > 22 ? n.title.slice(0, 21) + '…' : n.title;
-            ctx.fillText(label, n.x, n.y + r + 4);
+            const labelY = n.y + r + 4;
+            ctx.fillText(label, n.x, labelY);
+
+            // Close view: show first 2 lines of body snippet
+            if (globalScale > 1.2 && n.snippet) {
+              const snippetFontSize = Math.max(6, Math.min(8 / globalScale, 10));
+              ctx.font = `400 ${snippetFontSize}px Inter, system-ui, sans-serif`;
+              ctx.fillStyle = '#6B7280';
+              ctx.globalAlpha = visual.alpha * 0.6;
+
+              const rawLines = n.snippet.split('\n').filter(l => l.trim());
+              const lines = rawLines.slice(0, 2).map(l =>
+                l.length > 40 ? l.slice(0, 39) + '…' : l
+              );
+              lines.forEach((line, i) => {
+                ctx.fillText(line, n.x!, labelY + snippetFontSize * 1.4 * (i + 1));
+              });
+            }
           }
           ctx.globalAlpha = 1;
         }}
