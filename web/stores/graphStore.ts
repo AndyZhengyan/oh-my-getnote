@@ -17,6 +17,7 @@ export interface GraphIndex {
   generated_at: string;
   domains: string[];
   index: Record<string, NoteIndexEntry>;
+  archivePath?: string;
   stats: {
     total_notes: number;
     total_connections: number;

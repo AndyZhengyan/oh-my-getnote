@@ -179,7 +179,7 @@ async function main() {
     title: meta.title,
     connections: meta.connections,
   }));
-  const graphIndex = buildGraphIndex(entries);
+  const graphIndex = buildGraphIndex(entries, path.basename(sourceDir));
   fs.writeFileSync(indexPath, JSON.stringify(graphIndex, null, 2), 'utf8');
 
   // 6. Incremental LanceDB write (idempotent)
