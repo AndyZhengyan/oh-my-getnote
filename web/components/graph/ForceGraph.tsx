@@ -262,12 +262,18 @@ export default function ForceGraph() {
   const MAX_ZOOM = 2.5;
 
   const handleZoom = useCallback((transform: { k: number; x: number; y: number }) => {
-    setZoomState({ x: transform.x, y: transform.y, k: transform.k });
-    setCurrentScale(Math.min(transform.k, MAX_ZOOM));
+    // NOTE: Defer state updates via rAF to avoid "Cannot update a component
+    // while rendering" error. ForceGraph2D can fire onZoom during its render
+    // phase; calling setState directly would trigger React's concurrent-mode
+    // safeguard.
+    requestAnimationFrame(() => {
+      setZoomState({ x: transform.x, y: transform.y, k: transform.k });
+      setCurrentScale(Math.min(transform.k, MAX_ZOOM));
+    });
     // NOTE: Do NOT call resumeAnimation() here — it triggers an internal
     // zoom event that re-enters handleZoom → infinite recursion (stack overflow).
     // Animation is resumed on user interactions (click/drag) via handleNodeClick, etc.
-  }, [setCurrentScale]);
+  }, []);
   useEffect(() => {
     if (fgRef.current && nodes.length > 0) {
       const checkZoom = () => {
