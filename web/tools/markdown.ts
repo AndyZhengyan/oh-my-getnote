@@ -88,6 +88,7 @@ function inline(text: string): string {
 }
 
 function inlineNoBr(text: string): string {
+  if (typeof text !== 'string') return String(text ?? '');
   // P3-8 fix: Handle <code> tags FIRST, before stripTags wipes them
   // This must run before any other tag processing
   text = text.replace(/<code(?:[^>]*)?>([\s\S]*?)<\/code>/gi, (_, code) => {
@@ -98,12 +99,12 @@ function inlineNoBr(text: string): string {
   text = text.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => {
     return `[${inlineNoBr(label.trim())}](${href})`;
   });
-  // bold+italic: <strong><em> or <em><strong>
+  // bold+italic: <strong><em> or <em><strong> — keep as-is, let plain bold handler catch simple <strong>text</strong>
   text = text.replace(/<\/?(?:strong|b)[^>]*>((?:<\/?(?:em|i)[^>]*>|[\s\S])*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `***${inlineNoBr(inner)}***`);
-  // bold: <strong> or <b>
-  text = text.replace(/<\/?(?:strong|b)[^>]*>([\s\S]*?)<\/?(?:strong|b)[^>]*>/gi, (_, inner) => `**${inlineNoBr(inner)}**`);
-  // italic: <em> or <i>
-  text = text.replace(/<\/?(?:em|i)[^>]*>([\s\S]*?)<\/?(?:em|i)[^>]*>/gi, (_, inner) => `*${inlineNoBr(inner)}*`);
+  // bold: <strong>text</strong> — prevent matching across closing tag boundary
+  text = text.replace(/<\/?(?:strong|b)[^>]*>(?:<[^/][^>]*>|[\s\S])*?<\/(?:strong|b)[^>]*>/gi, (_, inner) => `**${inlineNoBr(inner)}**`);
+  // italic: <em>text</em>
+  text = text.replace(/<\/?(?:em|i)[^>]*>(?:<[^/][^>]*>|[\s\S])*?<\/(?:em|i)[^>]*>/gi, (_, inner) => `*${inlineNoBr(inner)}*`);
   // strip remaining tags
   text = stripTags(text);
   return text;
