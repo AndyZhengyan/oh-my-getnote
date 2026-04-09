@@ -14,6 +14,7 @@ export interface GraphIndex {
   version: '1.0';
   generated_at: string;
   domains: string[];
+  archivePath?: string;
   index: Record<string, {
     path: string;
     domain: string;
@@ -30,7 +31,7 @@ export interface GraphIndex {
   };
 }
 
-export function buildGraphIndex(entries: NoteIndexEntry[]): GraphIndex {
+export function buildGraphIndex(entries: NoteIndexEntry[], archivePath?: string): GraphIndex {
   const domainsSet = new Set<string>();
   const byDomain: Record<string, number> = {};
   const byType: Record<string, number> = {};
@@ -58,6 +59,7 @@ export function buildGraphIndex(entries: NoteIndexEntry[]): GraphIndex {
     version: '1.0',
     generated_at: new Date().toISOString(),
     domains: Array.from(domainsSet),
+    archivePath,
     index,
     stats: {
       total_notes: entries.length,

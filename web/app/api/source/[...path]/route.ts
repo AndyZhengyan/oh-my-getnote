@@ -23,7 +23,8 @@ export async function GET(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const { path: pathParts } = await context.params;
-  const filePath = path.join(process.cwd(), 'source', ...pathParts);
+  // source/ is at the project root, one level up from the Next.js web/ directory
+  const filePath = path.join(process.cwd(), '..', 'source', ...pathParts);
 
   if (!fs.existsSync(filePath)) {
     return new NextResponse('Not found', { status: 404 });
