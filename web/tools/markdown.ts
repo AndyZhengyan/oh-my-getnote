@@ -305,7 +305,13 @@ function htmlToMd(html: string): string[] {
             const parts = md.split('\n');
             for (let i = 0; i < parts.length; i++) {
               if (parts[i].trim()) {
-                lines.push(parts[i].trim());
+                // Fix bare list items: "- item" inside <p> needs leading space to render as list
+                const line = parts[i].trim();
+                if ((line.match(/^[-*+]/) || line.match(/^\d+\./)) && !line.match(/^\s/)) {
+                  lines.push(' ' + line);
+                } else {
+                  lines.push(line);
+                }
               }
               if (i < parts.length - 1) lines.push('');
             }
@@ -488,6 +494,62 @@ export function convertHtmlToMarkdown(
     bodyLines.unshift(...inlineImages);
   }
 
+  // Post-processing: convert inline `mermaid...` code to fenced code blocks
+  // (must run AFTER inlineImages are added to bodyLines)
+  const processedLines: string[] = [];
+  let i = 0;
+  while (i < bodyLines.length) {
+    const line = bodyLines[i];
+    // Detect line containing inline mermaid: starts/ends with backtick, contains `mermaid
+    if (line.includes('`mermaid')) {
+      const openMatch = line.match(/^(.*?)`mermaid([\s\S]*?)`(.*)$/);
+      if (openMatch) {
+        const prefix = openMatch[1]?.trim() ?? '';
+        const codeContent = openMatch[2] ?? '';
+        const suffix = openMatch[3]?.trim() ?? '';
+        // Push prefix as text if non-empty
+        if (prefix) processedLines.push(prefix);
+        // Collect subsequent lines that are part of the mermaid block (until we find closing backtick)
+        const blockLines = [codeContent];
+        let j = i + 1;
+        let foundClose = false;
+        while (j < bodyLines.length) {
+          const nextLine = bodyLines[j];
+          if (nextLine.includes('`') && !nextLine.startsWith(' ')) {
+            // This line has closing backtick
+            const closeIdx = nextLine.indexOf('`');
+            blockLines.push(nextLine.slice(0, closeIdx));
+            // Push any content after the closing backtick
+            const afterClose = nextLine.slice(closeIdx + 1).trim();
+            if (afterClose) processedLines.push(afterClose);
+            foundClose = true;
+            j++;
+            break;
+          } else {
+            blockLines.push(nextLine);
+            j++;
+          }
+        }
+        if (!foundClose) {
+          // EOF without closing backtick — emit what we have
+          for (const bl of blockLines) processedLines.push(bl);
+        } else {
+          // Emit fenced mermaid block
+          processedLines.push('```mermaid');
+          for (const bl of blockLines) {
+            if (bl.trim()) processedLines.push(bl);
+          }
+          processedLines.push('```');
+        }
+        i = j;
+        continue;
+      }
+    }
+    processedLines.push(line);
+    i++;
+  }
+  const body = processedLines.join('\n');
+
   return {
     frontmatter: {
       id,
@@ -498,7 +560,7 @@ export function convertHtmlToMarkdown(
       domain: '',
       connections: [],
     },
-    body: bodyLines.join('\n'),
+    body,
     imageRefs,
     _inlineImages: inlineImages,
   };

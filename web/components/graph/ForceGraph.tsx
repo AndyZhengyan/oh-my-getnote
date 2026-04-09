@@ -171,9 +171,16 @@ export default function ForceGraph() {
       // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
-        const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
-        fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
-        fgRef.current.zoomToFit(800, padding);
+        if (nodes.length === 1) {
+          // Single node: no edges to bound, zoomToFit would zoom out to near-zero.
+          // Just center it and fix zoom at 1.2 so it's visible and interactive.
+          fgRef.current.centerAt(dims.w / 2, dims.h / 2, 400);
+          fgRef.current.zoom(1.2, 400);
+        } else {
+          const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
+          fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
+          fgRef.current.zoomToFit(800, padding);
+        }
         fgRef.current.d3ReheatSimulation();
         fgRef.current.resumeAnimation();
         // Re-freeze after settling
