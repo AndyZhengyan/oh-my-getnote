@@ -37,7 +37,7 @@ export default function MultiHopPanel() {
   return (
     <div style={{
       position: 'fixed',
-      top: 66,
+      bottom: 16,
       right: 16,
       width: 340,
       maxHeight: 'calc(100vh - 80px)',
@@ -47,7 +47,7 @@ export default function MultiHopPanel() {
       border: '1px solid var(--border)',
       borderRadius: 12,
       padding: 16,
-      zIndex: 200,
+      zIndex: 150,
       boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
       overflowY: 'auto',
     }}>
