@@ -172,10 +172,17 @@ export default function ForceGraph() {
       setTimeout(() => {
         if (!fgRef.current) return;
         if (nodes.length === 1) {
-          // Single node: no edges to bound, zoomToFit would zoom out to near-zero.
-          // Center it, fix zoom at 1.2, and keep simulation frozen — no drift.
+          // Single node: center it, fix zoom at 1.2, then kill the simulation
+          // so it cannot drift regardless of residual alpha.
           fgRef.current.centerAt(dims.w / 2, dims.h / 2, 400);
           fgRef.current.zoom(1.2, 400);
+          // d3Force('') returns the raw d3 simulation (registered under empty-string key
+          // in force-graph's internals). Call .alpha(0) to stop physics immediately.
+          try {
+            // @ts-ignore
+            fgRef.current.d3Force('')?.alpha(0);
+          } catch { /* ignore if internals changed */ }
+          fgRef.current.pauseAnimation();
         } else {
           const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
           fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
@@ -184,7 +191,12 @@ export default function ForceGraph() {
           fgRef.current.resumeAnimation();
           // Re-freeze after settling
           const freezeTimer = setTimeout(() => {
-            if (fgRef.current) fgRef.current.pauseAnimation();
+            if (!fgRef.current) return;
+            try {
+              // @ts-ignore
+              fgRef.current.d3Force('')?.alpha(0);
+            } catch { /* ignore */ }
+            fgRef.current.pauseAnimation();
           }, 2500);
           return () => clearTimeout(freezeTimer);
         }
