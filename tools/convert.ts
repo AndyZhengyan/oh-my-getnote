@@ -5,48 +5,23 @@
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-// 修正引用路径，指向已受版本控制的 web/lib 下的文件
+// 使用预构建的共享 parser（构建时通过 scripts/backfill.ts 生成到 dist/parser/）
+import { parseHtmlFile } from '../dist/parser/index.js';
 import { buildNoteConnections } from '../web/lib/linker/semantic.js';
-import { projectTo2D } from '../web/lib/linker/projector.js';
 import { convertHtmlToMarkdown, buildMarkdownString } from '../web/tools/markdown.js';
-import { buildGraphIndex, NoteIndexEntry } from '../web/tools/indexer.js';
-import { NoteMetadata } from '../web/tools/markdown.js';
+import { buildGraphIndex } from '../web/tools/indexer.js';
 
 import { storeNote, noteExists } from '../lib/lancedb.js';
 import { embedText } from '../lib/embedding.js';
 
-// 替代已丢失的 parser 逻辑，直接实现对 GetNote HTML 的基础解析
+// Note shape returned by dist/parser/index.js
 interface Note {
   id: string;
   title: string;
   tags: string[];
   contentSnippet?: string;
-}
-
-function parseHtmlFile(filePath: string): Note | null {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const id = path.basename(filePath, '.html');
-  let title = id;
-  const titleMatch = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || content.match(/<title>([\s\S]*?)<\/title>/i);
-  if (titleMatch) {
-    title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-  }
-  const tags: string[] = [];
-  const tagMatches = content.match(/<div class=
-ote-tags>([\s\S]*?)<\/div>/i);
-  if (tagMatches) {
-    const tagContent = tagMatches[1];
-    const individualTags = tagContent.match(/#([^\s<#]+)/g);
-    if (individualTags) {
-      individualTags.forEach(t => tags.push(t.substring(1)));
-    }
-  }
-  const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  let contentSnippet = '';
-  if (bodyMatch) {
-    contentSnippet = bodyMatch[1].replace(/<[^>]*>/g, ' ').substring(0, 500).trim();
-  }
-  return { id, title, tags, contentSnippet };
+  date?: string;
+  filename: string;
 }
 
 export function inferDomain(tags: string[]): string {
@@ -178,21 +153,7 @@ async function main() {
     }
     console.log('   关联计算完成');
 
-    // 4. PCA 降维
-    console.log('📐 PCA 降维...');
-    const ids = notes.map(n => n.id);
-    const vectors = ids.map(id => embeddings.get(id) || new Array(768).fill(0));
-    const coords = projectTo2D(vectors);
-    for (let i = 0; i < ids.length; i++) {
-      const meta = metadataMap.get(ids[i]);
-      if (meta) {
-        meta.x = coords[i][0];
-        meta.y = coords[i][1];
-      }
-    }
-    console.log('   PCA 降维完成');
-
-    // 重新生成 Markdown（写入关联数据）
+    // 4. 重新生成 Markdown（写入关联数据）
     console.log('📝 更新 Markdown 关联数据...');
     for (const [noteId, meta] of metadataMap) {
       const mdPath = path.join(notesOutDir, meta.type, noteId + '.md');
@@ -222,7 +183,7 @@ async function main() {
   const graphIndex = buildGraphIndex(entries, path.basename(sourceDir));
   fs.writeFileSync(indexPath, JSON.stringify(graphIndex, null, 2), 'utf8');
 
-  // 6. Incremental LanceDB write (idempotent)
+  // 6. 写入 LanceDB（幂等）
   console.log('📚 写入 LanceDB 向量存储...');
   let stored = 0;
   for (const note of notes) {
@@ -248,7 +209,7 @@ async function main() {
 }
 
 // Guard: only run main() when executed directly as CLI
-if (import.meta.url === 'file://' + process.argv[1].replace(/\/g, '/')) {
+if (process.argv[1] && process.argv[1].endsWith('convert.ts')) {
   main().catch(err => {
     console.error('转换失败:', err);
     process.exit(1);
