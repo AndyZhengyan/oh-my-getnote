@@ -1,7 +1,7 @@
 {
-  "name": "memex-for-getnote-web",
+  "name": "oh-my-getnote-web",
   "version": "0.1.0",
-  "description": "Memex for Getnote web app — knowledge graph visualization and search",
+  "description": "Oh My Getnote web app — knowledge graph visualization and search",
   "author": "Andy Zhengyan",
   "repository": {
     "type": "git",

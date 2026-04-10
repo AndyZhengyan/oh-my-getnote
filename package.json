@@ -1,6 +1,6 @@
 {
   "name": "memex-for-getnote",
-  "description": "Memex for Getnote — AI-powered knowledge graph with vector search",
+  "description": "Oh My Getnote — AI-powered knowledge graph with vector search",
   "version": "0.1.0",
   "author": "Andy Zhengyan",
   "repository": { "type": "git", "url": "https://github.com/AndyZhengyan/memex-for-getnote.git" },

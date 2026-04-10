@@ -1,4 +1,4 @@
-# Memex for Getnote
+# Oh My Getnote
 
 > _"人脑不是那样运作的。它靠联想运转。"_ — 范内瓦尔·布什，1945
 
@@ -8,7 +8,7 @@
 
 ---
 
-**Memex for Getnote** 把你的 [GetNote](https://www.biji.com) 笔记变成一张可交互的知识图谱。沿轨迹探索，让关联自己浮现。
+**Oh My Getnote** 把你的 [GetNote](https://www.biji.com) 笔记变成一张可交互的知识图谱。沿轨迹探索，让关联自己浮现。
 
 ---
 
@@ -54,7 +54,7 @@ notes/*.md         graph-index.json
 
 ## 给 GetNote 用户
 
-你在 [GetNote](https://www.biji.com) 积累了大量个人知识，但散落在一个个 HTML 文件里，关联看不见，思路难回顾。**Memex for Getnote** 把它们变成一张可以探索的图谱——不是强行分类，而是让关联自然浮现。
+你在 [GetNote](https://www.biji.com) 积累了大量个人知识，但散落在一个个 HTML 文件里，关联看不见，思路难回顾。**Oh My Getnote** 把它们变成一张可以探索的图谱——不是强行分类，而是让关联自然浮现。
 
 ---
 

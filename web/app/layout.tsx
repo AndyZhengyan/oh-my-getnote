@@ -3,7 +3,7 @@ import './globals.css';
 import 'github-markdown-css/github-markdown-light.css';
 
 export const metadata: Metadata = {
-  title: 'Memex for Getnote -- by AndyZheng',
+  title: 'Oh My Getnote -- by AndyZheng',
   description: '探索GetNote知识轨迹，致敬Memex',
 };
 

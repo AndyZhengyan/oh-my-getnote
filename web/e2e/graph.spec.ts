@@ -20,7 +20,7 @@ async function getStatsText(page: any): Promise<string> {
   });
 }
 
-test.describe('Memex 2.0 知识图谱', () => {
+test.describe('Oh My Getnote 知识图谱', () => {
 
   let consoleErrors: string[] = [];
   test.beforeEach(async ({ page }) => {
@@ -39,7 +39,7 @@ test.describe('Memex 2.0 知识图谱', () => {
 
   // ── TC-1: 页面基础渲染 ─────────────────────────────────────────────────
   test('TC-1: Toolbar + LeftNav + Canvas 正确渲染', async ({ page }) => {
-    await expect(page.locator('text=📚 Memex for Getnote')).toBeVisible();
+    await expect(page.locator('text=📚 Oh My Getnote')).toBeVisible();
     // stats 存在
     await expect(page.getByText(/\d+ 篇 · \d+ 条关联/)).toBeVisible();
     // LeftNav aside
