@@ -3,10 +3,23 @@
   "description": "Oh My Getnote — AI-powered personal Memex inspired by Vannevar Bush",
   "version": "0.1.1",
   "author": "Andy Zhengyan",
-  "repository": { "type": "git", "url": "https://github.com/AndyZhengyan/oh-my-getnote.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndyZhengyan/oh-my-getnote.git"
+  },
   "license": "MIT",
-  "keywords": ["knowledge-graph", "vector-search", "nextjs", "ai", "notes", "memex", "llm-wiki"],
-  "bugs": { "url": "https://github.com/AndyZhengyan/oh-my-getnote/issues" },
+  "keywords": [
+    "knowledge-graph",
+    "vector-search",
+    "nextjs",
+    "ai",
+    "notes",
+    "memex",
+    "llm-wiki"
+  ],
+  "bugs": {
+    "url": "https://github.com/AndyZhengyan/oh-my-getnote/issues"
+  },
   "homepage": "https://github.com/AndyZhengyan/oh-my-getnote#readme",
   "private": true,
   "scripts": {
@@ -22,6 +35,7 @@
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
+    "cheerio": "^1.2.0",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {

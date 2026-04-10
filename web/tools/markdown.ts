@@ -9,8 +9,6 @@ export interface NoteMetadata {
   tags: string[];
   domain: string;
   connections: Array<{ noteId: string; score: number; type: 'semantic' | 'explicit' }>;
-  x?: number;
-  y?: number;
   ai_summary?: string;
 }
 
@@ -228,10 +226,6 @@ export function buildMarkdownString(result: ConvertResult): string {
       lines.push(`    score: ${c.score}`);
       lines.push(`    type: "${c.type}"`);
     }
-  }
-  if (fm.x !== undefined && fm.y !== undefined) {
-    lines.push(`x: ${fm.x}`);
-    lines.push(`y: ${fm.y}`);
   }
   if (fm.ai_summary) {
     lines.push('ai_summary: |');

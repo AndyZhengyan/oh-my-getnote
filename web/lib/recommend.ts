@@ -2,7 +2,10 @@
 // Frontend-only synthesis of recommended paths from vector search results.
 // No AI API calls — pure heuristic scoring + explanation generation.
 
-import { DOMAIN_COLORS } from './constants';
+import type { RecommendedPath } from '@/stores/graphStore';
+
+// Re-export so consumers can import the type from a single place
+export type { RecommendedPath };
 
 export interface VectorResult {
   id: string;
@@ -12,7 +15,7 @@ export interface VectorResult {
   score: number;
 }
 
-export interface GraphIndexEntry {
+interface GraphIndexEntry {
   path: string;
   domain: string;
   type: string;
@@ -21,26 +24,11 @@ export interface GraphIndexEntry {
   connections: Array<{ noteId: string; score: number; type: string }>;
 }
 
-export interface RecommendedPath {
-  noteId: string;
-  title: string;
-  domain: string;
-  domainColor: string;
-  type: string;
-  score: number;
-  compositeScore: number;
-  text: string;
-  explanation: string;
-  whyFrom: string[];
-  isSaved: boolean;
-  bodyPreview?: string;
-  connections: Array<{ noteId: string; score: number; type: string }>;
-}
-
 /**
  * Synthesize top-3 recommended paths from vector search results + graph context.
  *
  * Scoring: 55% vector similarity + 25% domain alignment (recency-weighted) + 20% direct connection bonus.
+ * Returns paths WITHOUT domainColor — LeftNav applies DOMAIN_COLORS after calling this.
  */
 export function synthesizeRecommendedPaths(
   rawResults: VectorResult[],
@@ -57,7 +45,7 @@ export function synthesizeRecommendedPaths(
       noteId: result.id,
       title: result.title,
       domain: entry?.domain ?? '',
-      domainColor: DOMAIN_COLORS[entry?.domain ?? ''] ?? '#9CA3AF',
+      domainColor: '', // resolved by caller via DOMAIN_COLORS
       type: result.type,
       score: result.score,
       compositeScore: composite.total,
@@ -191,17 +179,19 @@ function generateExplanation(
     }
   }
 
-  // 2. Direct connection explanation
-  const connectedNodes: string[] = [];
-  browsePath.forEach(nodeId => {
+  // 2. Direct connection explanation — mention most recent connected node
+  let lastConnectedTitle: string | undefined;
+  for (let i = browsePath.length - 1; i >= 0; i--) {
+    const nodeId = browsePath[i];
     const conns = graphIndex[nodeId]?.connections ?? [];
-    if (conns.some(c => c.noteId === result.id)) {
-      const title = graphIndex[nodeId]?.title ?? nodeId;
-      if (!connectedNodes.includes(title)) connectedNodes.push(title);
+    const found = conns.find(c => c.noteId === result.id);
+    if (found) {
+      lastConnectedTitle = graphIndex[nodeId]?.title ?? nodeId;
+      break;
     }
-  });
-  if (connectedNodes.length > 0) {
-    parts.push(`与「${connectedNodes[connectedNodes.length - 1]}」有直接关联`);
+  }
+  if (lastConnectedTitle) {
+    parts.push(`与「${lastConnectedTitle}」有直接关联`);
   }
 
   // 3. Content snippet signal from vector search text
