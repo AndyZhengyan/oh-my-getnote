@@ -163,11 +163,9 @@ export default function ForceGraph() {
     };
   }, []);
 
-  // Auto-fit after data changes (e.g. filter / click), but only once
-  const prevNodesLen = useRef(nodes.length);
+  // Auto-fit after data changes (e.g. filter / click)
   useEffect(() => {
-    if (fgRef.current && nodes.length > 0 && prevNodesLen.current !== nodes.length) {
-      prevNodesLen.current = nodes.length;
+    if (fgRef.current && nodes.length > 0) {
       // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
@@ -182,14 +180,14 @@ export default function ForceGraph() {
           }
         } else {
           // Multi-node: use standard zoomToFit.
-          fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
+          fgRef.current.centerAt(0, 0, 1);
           fgRef.current.zoomToFit(800, 100);
           fgRef.current.d3ReheatSimulation();
           fgRef.current.resumeAnimation();
         }
       }, 100);
     }
-  }, [nodes, dims]);
+  }, [nodes]); // Trigger whenever node set changes (including filtering)
 
   // Let simulation settle on initial load. After ~3s alpha decays enough that
   // the RAF naturally exits (doRedraw = false when engine stops). We do NOT call
@@ -554,13 +552,14 @@ function buildGraphData(
   const links: Array<{ source: string; target: string; score?: number }> = [];
   const seenNodes = new Set<string>();
 
-  // Active set: nodes that pass filters AND are not ghosts
+  // Active set: nodes that pass filters
   const activeIds = new Set<string>();
   for (const [id, entry] of Object.entries(index.index)) {
     if (domainFilter && entry.domain !== domainFilter) continue;
     if (typeFilter && entry.type !== typeFilter) continue;
     if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
-    if (levelMap.get(id) === 'ghost') continue;
+    // Keep ghost nodes in the simulation if they pass global filters,
+    // so their physical state persists even when dimmed.
     activeIds.add(id);
   }
 
