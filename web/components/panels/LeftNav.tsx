@@ -2,8 +2,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useGraphStore } from '@/stores/graphStore';
+import { useGraphStore, type TrailStep } from '@/stores/graphStore';
 import { Bookmark, Trash2, X, Sparkles } from 'lucide-react';
+import { DOMAIN_COLORS } from '@/lib/constants';
+import { synthesizeRecommendedPaths, type VectorResult } from '@/lib/recommend';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -13,17 +15,6 @@ function compareAlphaFirst(a: string, b: string): number {
   if (!aIsEN && bIsEN) return 1;
   return a.localeCompare(b, 'zh-CN');
 }
-
-const DOMAIN_COLORS: Record<string, string> = {
-  'AI 核心技术与模型':   '#6366F1',
-  'AI 产业生态与巨头':  '#8B5CF6',
-  'AI 智能体与工程':    '#10B981',
-  '管理、职场与个人成长': '#F59E0B',
-  '行业应用与生活闲谈': '#EC4899',
-  '企业数字化与数据治理': '#3B82F6',
-  '社会、安全与伦理':  '#A855F7',
-  '其他':               '#9CA3AF',
-};
 
 export default function LeftNav() {
   const {
@@ -35,9 +26,9 @@ export default function LeftNav() {
     savedTrails,
     deleteTrail, saveTrail,
     selectNode,
+    recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; title: string; type: string; score: number }>>([]);
   const [searching, setSearching] = useState(false);
 
   const handleVectorSearch = async () => {
@@ -51,10 +42,13 @@ export default function LeftNav() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
       });
+      if (!res.ok) { setRecommendedPaths([]); return; }
       const data = await res.json();
-      setSearchResults(data.results ?? []);
+      const rawResults: VectorResult[] = data.results ?? [];
+      const paths = synthesizeRecommendedPaths(rawResults, browsePath, graphIndex?.index ?? null);
+      setRecommendedPaths(paths.map(p => ({ ...p, domainColor: DOMAIN_COLORS[p.domain] ?? '#9CA3AF' })));
     } catch {
-      setSearchResults([]);
+      setRecommendedPaths([]);
     } finally {
       setSearching(false);
     }

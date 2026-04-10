@@ -77,10 +77,11 @@ describe('synthesizeRecommendedPaths', () => {
     }
   });
 
-  it('fills in domainColor from DOMAIN_COLORS', () => {
+  it('sets domainColor to empty string (caller resolves via DOMAIN_COLORS)', () => {
     const result = synthesizeRecommendedPaths(rawResults, ['node-a'], graphIndex);
     const nodeC = result.find(r => r.noteId === 'node-c');
-    expect(nodeC?.domainColor).toBe('#10B981'); // AI 智能体与工程
+    // domainColor is intentionally left empty — LeftNav resolves it via DOMAIN_COLORS
+    expect(nodeC?.domainColor).toBe('');
   });
 
   it('marks isSaved false initially', () => {
