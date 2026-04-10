@@ -60,13 +60,16 @@ function copyImages(
 async function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('用法: npx tsx tools/convert.ts <source-dir> [--out <output-dir>]');
+    console.error('用法: npx tsx tools/convert.ts <source-dir> [--out <output-dir>] [--force]');
+    console.error('  --out   指定输出目录（默认 .）');
+    console.error('  --force 强制覆盖现有 Markdown 文件的 body 内容（默认跳过，只更新 frontmatter）');
     process.exit(1);
   }
 
   const sourceDir = args[0];
   const outFlagIdx = args.indexOf('--out');
   const outDir = outFlagIdx >= 0 ? args[outFlagIdx + 1] : '.';
+  const force = args.includes('--force');
 
   const notesDir = path.join(sourceDir, 'notes');
   if (!fs.existsSync(notesDir)) {
@@ -110,11 +113,13 @@ async function main() {
     // 幂等性：写入 Markdown 时，将 frontmatter 加入 metadataMap（无论文件是否已存在）
     metadataMap.set(note.id, result.frontmatter);
 
-    // 写入 Markdown（幂等：跳过已存在的文件）
+    // 写入 Markdown
+    //   默认模式：跳过已存在的文件（保护用户对 body 的手动编辑，只更新 frontmatter）
+    //   --force 模式：强制覆盖 body（converter 本身有 bug 修复时需要）
     const typeDir = path.join(notesOutDir, result.frontmatter.type);
     fs.mkdirSync(typeDir, { recursive: true });
     const mdPath = path.join(typeDir, `${note.id}.md`);
-    if (!fs.existsSync(mdPath)) {
+    if (!fs.existsSync(mdPath) || force) {
       const mdContent = buildMarkdownString(result);
       fs.writeFileSync(mdPath, '\uFEFF' + mdContent, 'utf8');
     }
