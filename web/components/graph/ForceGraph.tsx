@@ -503,7 +503,7 @@ export default function ForceGraph() {
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid var(--border)',
-            borderRadius: 10,
+            borderRadius: 'var(--radius-md)',
             boxShadow: 'var(--shadow-md)',
             padding: '10px 14px',
             maxWidth: 240,

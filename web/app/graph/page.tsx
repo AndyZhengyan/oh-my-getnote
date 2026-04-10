@@ -76,6 +76,7 @@ export default function GraphPage() {
         backgroundSize: '24px 24px',
         backgroundPosition: '14px 78px',
         overflow: 'hidden',
+        borderRadius: 'var(--radius-lg)',
       }}>
         <ForceGraph />
       </div>
