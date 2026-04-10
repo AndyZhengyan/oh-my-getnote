@@ -8,7 +8,7 @@
 
 ---
 
-**Oh My Getnote** 把你的 [GetNote](https://www.biji.com) 笔记变成一张可交互的知识图谱——用 Bush 的方式，让关联自然浮现。
+**Oh My Getnote** 把你的 [GetNote](https://www.biji.com) 笔记变成一台可交互的**个人 Memex**——用 Bush 的方式，让关联自然浮现。
 
 ---
 
@@ -30,7 +30,7 @@ notes/*.md         graph-index.json
     │  ③ 启动 Memex
     │ cd web && npm run dev
     ▼
-  🧠 你的个人知识图谱
+  🧠 你的个人知识轨迹
   AI 推荐 · 探索轨迹 · 深度发现
 ```
 
