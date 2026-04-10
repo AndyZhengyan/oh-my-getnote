@@ -34,3 +34,4 @@ graph-index.json
 notes/
 images/
 *.png
+!docs/banner.png

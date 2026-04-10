@@ -70,7 +70,7 @@ my-getnote-kg/
 ```
 
 - **`web/`** — The main Next.js application. All UI, routing, and client-side logic live here.
-- **`notes/`** — Plain markdown files that serve as the note source. The graph is built from these files.
+- **`notes/`** — Plain markdown files that serve as the note source. The graph is built from these files. See [docs/converter.md](docs/converter.md) for how to import new notes from Get笔记 HTML exports.
 - **`web/e2e/`** — Playwright tests that verify end-to-end behavior in a real browser.
 - **`web/components/`** — Reusable React components (canvas, panels, graph visualizations, etc.).
 - **`web/stores/`** — Zustand stores managing application state (selected note, graph layout, UI panels, etc.).

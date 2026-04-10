@@ -17,13 +17,14 @@ function fixMarkdownLineBreaks(body: string): string {
   return fixed;
 }
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
 import { X, Sparkles, Loader2, Maximize, Minimize, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DOMAIN_COLORS } from '@/lib/constants';
 
 // 链路感知推荐算法
 function getPathAwareRecommendations(
@@ -73,17 +74,6 @@ function getPathAwareRecommendations(
     }));
 }
 
-const DOMAIN_COLORS: Record<string, string> = {
-  'AI 核心技术与模型':   '#6366F1',
-  'AI 产业生态与巨头':  '#8B5CF6',
-  'AI 智能体与工程':    '#10B981',
-  '管理、职场与个人成长': '#F59E0B',
-  '行业应用与生活闲谈': '#EC4899',
-  '企业数字化与数据治理': '#3B82F6',
-  '社会、安全与伦理':  '#A855F7',
-  '其他':               '#9CA3AF',
-};
-
 export default function RightPanel() {
   const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath } = useGraphStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -92,12 +82,8 @@ export default function RightPanel() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [recTooltip, setRecTooltip] = useState<{ noteId: string; x: number; y: number } | null>(null);
-  const [recSummary, setRecSummary] = useState<string>('');
-  const recHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setRecTooltip(null);
     setAiError(null);
     if (!selectedNodeId || !graphIndex) { setNote(null); setAiSummary(null); return; }
     const entry = graphIndex.index[selectedNodeId];
@@ -138,35 +124,9 @@ export default function RightPanel() {
           body: JSON.stringify({ path: graphIndex.index[selectedNodeId].path, frontmatter: { ...note.frontmatter, ai_summary: data.summary } }),
         });
       }
-    } catch (err) { setAiError('AI 摘要生成失败，请检查网络或 API 配置'); }
+    } catch { setAiError('AI 摘要生成失败，请检查网络或 API 配置'); }
     finally { setAiLoading(false); }
   }, [selectedNodeId, note, graphIndex]);
-
-  const handleRecHover = useCallback((noteId: string, e: React.MouseEvent) => {
-    if (recTooltip?.noteId === noteId) return;
-    if (recHoverTimerRef.current) clearTimeout(recHoverTimerRef.current);
-    recHoverTimerRef.current = setTimeout(async () => {
-      const path = graphIndex?.index[noteId]?.path;
-      if (!path) return;
-      setRecTooltip({ noteId, x: e.clientX, y: e.clientY });
-      const loaded = await loadNote(path);
-      if (loaded?.body) {
-        const preview = loaded.body
-          .split('\n')
-          .filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('---'))
-          .slice(0, 3)
-          .join('\n')
-          .slice(0, 200);
-        setRecSummary(preview);
-      }
-    }, 250);
-  }, [recTooltip, graphIndex]);
-
-  const handleRecMouseLeave = useCallback(() => {
-    if (recHoverTimerRef.current) clearTimeout(recHoverTimerRef.current);
-    setRecTooltip(null);
-    setRecSummary('');
-  }, []);
 
   if (!selectedNodeId || !graphIndex) return null;
   const entry = graphIndex.index[selectedNodeId];
@@ -176,7 +136,7 @@ export default function RightPanel() {
     ? {
         position: 'fixed', top: 78, right: 14, bottom: 14,
         left: 308, width: 'auto', maxHeight: 'calc(100vh - 92px)',
-        background: '#fff', border: 'none', borderRadius: 14,
+        background: '#fff', border: 'none', borderRadius: 'var(--radius-lg)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         overflowY: 'auto', zIndex: 300,
         display: 'flex', flexDirection: 'column',
@@ -187,7 +147,7 @@ export default function RightPanel() {
         width: 380, maxHeight: 'calc(100vh - 92px)',
         background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid var(--border)', borderRadius: 14,
+        border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         overflowY: 'auto', zIndex: 200,
         display: 'flex', flexDirection: 'column',
@@ -216,13 +176,13 @@ export default function RightPanel() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
+            <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               <ExternalLink size={16} />
             </button>
-            <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
+            <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
-            <button onClick={() => selectNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}>
+            <button onClick={() => selectNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               <X size={16} />
             </button>
           </div>
@@ -234,7 +194,7 @@ export default function RightPanel() {
           {note?.frontmatter.tags && note.frontmatter.tags.length > 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {note.frontmatter.tags.slice(1).map(tag => (
-                <span key={tag} style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>{tag}</span>
+                <span key={tag} style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '2px 8px', fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)' }}>{tag}</span>
               ))}
             </div>
           )}
@@ -282,7 +242,7 @@ export default function RightPanel() {
             <button onClick={handleAISummary} style={{
               width: '100%', padding: '8px 12px',
               background: 'var(--accent-light)', border: '1px solid var(--accent-mid)',
-              borderRadius: 8, color: 'var(--accent)', fontSize: 12,
+              borderRadius: 'var(--radius-md)', color: 'var(--accent)', fontSize: 12,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               marginBottom: 12, fontFamily: 'var(--font-ui)',
               transition: 'background 0.12s',
@@ -309,7 +269,7 @@ export default function RightPanel() {
                     <div key={rec.noteId} onClick={() => selectNode(rec.noteId)} style={{
                       padding: '7px 10px',
                       background: 'rgba(0,0,0,0.03)',
-                      borderRadius: 6,
+                      borderRadius: 'var(--radius-md)',
                       fontSize: 12,
                       color: 'var(--text-primary)',
                       cursor: 'pointer',
@@ -338,32 +298,6 @@ export default function RightPanel() {
           })()}
         </div>
       </motion.aside>
-
-      {/* Similar notes tooltip */}
-      {recTooltip && recSummary && (
-        <div
-          style={{
-            position: 'fixed',
-            left: recTooltip.x - 20,
-            top: recTooltip.y - 10,
-            transform: 'translateX(-100%)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            boxShadow: 'var(--shadow-md)',
-            padding: '10px 14px',
-            maxWidth: 260,
-            zIndex: 999,
-            pointerEvents: 'none',
-          }}
-        >
-          <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'hidden' }}>
-            {recSummary}…
-          </div>
-        </div>
-      )}
     </AnimatePresence>
   );
 }

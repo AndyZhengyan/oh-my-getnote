@@ -5,16 +5,48 @@
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseHtmlFile } from '../dist/parser/index.js';
-import { buildNoteConnections } from '../dist/linker/semantic.js';
-import { projectTo2D } from '../dist/linker/projector.js';
-import { Note } from '../dist/types.js';
+// 修正引用路径，指向已受版本控制的 web/lib 下的文件
+import { buildNoteConnections } from '../web/lib/linker/semantic.js';
+import { projectTo2D } from '../web/lib/linker/projector.js';
 import { convertHtmlToMarkdown, buildMarkdownString } from '../web/tools/markdown.js';
 import { buildGraphIndex, NoteIndexEntry } from '../web/tools/indexer.js';
 import { NoteMetadata } from '../web/tools/markdown.js';
 
 import { storeNote, noteExists } from '../lib/lancedb.js';
 import { embedText } from '../lib/embedding.js';
+
+// 替代已丢失的 parser 逻辑，直接实现对 GetNote HTML 的基础解析
+interface Note {
+  id: string;
+  title: string;
+  tags: string[];
+  contentSnippet?: string;
+}
+
+function parseHtmlFile(filePath: string): Note | null {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const id = path.basename(filePath, '.html');
+  let title = id;
+  const titleMatch = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || content.match(/<title>([\s\S]*?)<\/title>/i);
+  if (titleMatch) {
+    title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+  }
+  const tags: string[] = [];
+  const tagMatches = content.match(/<div class="note-tags">([\s\S]*?)<\/div>/i);
+  if (tagMatches) {
+    const tagContent = tagMatches[1];
+    const individualTags = tagContent.match(/#([^\s<#]+)/g);
+    if (individualTags) {
+      individualTags.forEach(t => tags.push(t.substring(1)));
+    }
+  }
+  const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let contentSnippet = '';
+  if (bodyMatch) {
+    contentSnippet = bodyMatch[1].replace(/<[^>]*>/g, ' ').substring(0, 500).trim();
+  }
+  return { id, title, tags, contentSnippet };
+}
 
 export function inferDomain(tags: string[]): string {
   const tagStr = tags.join('');
@@ -60,18 +92,21 @@ function copyImages(
 async function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('用法: npx tsx tools/convert.ts <source-dir> [--out <output-dir>]');
+    console.error('用法: npx tsx tools/convert.ts <source-dir> [--out <output-dir>] [--force]');
+    console.error('  --out   指定输出目录（默认 .）');
+    console.error('  --force 强制覆盖现有 Markdown 文件的 body 内容（默认跳过，只更新 frontmatter）');
     process.exit(1);
   }
 
   const sourceDir = args[0];
   const outFlagIdx = args.indexOf('--out');
   const outDir = outFlagIdx >= 0 ? args[outFlagIdx + 1] : '.';
+  const force = args.includes('--force');
 
-  const notesDir = path.join(sourceDir, 'notes');
+  // 如果 sourceDir 下有 notes/ 目录，使用它；否则直接使用 sourceDir
+  let notesDir = path.join(sourceDir, 'notes');
   if (!fs.existsSync(notesDir)) {
-    console.error(`错误：找不到 notes 目录：${notesDir}`);
-    process.exit(1);
+    notesDir = sourceDir;
   }
 
   const notesOutDir = path.join(outDir, 'notes');
@@ -82,6 +117,12 @@ async function main() {
   // 1. 解析所有 HTML
   console.log('📖 解析 HTML 文件...');
   const htmlFiles = fs.readdirSync(notesDir).filter(f => f.endsWith('.html'));
+
+  if (htmlFiles.length === 0) {
+    console.error(`错误：在 ${notesDir} 中未找到 HTML 文件。`);
+    process.exit(1);
+  }
+
   const notes: Note[] = [];
   for (const file of htmlFiles) {
     const note = parseHtmlFile(path.join(notesDir, file));
@@ -110,11 +151,13 @@ async function main() {
     // 幂等性：写入 Markdown 时，将 frontmatter 加入 metadataMap（无论文件是否已存在）
     metadataMap.set(note.id, result.frontmatter);
 
-    // 写入 Markdown（幂等：跳过已存在的文件）
+    // 写入 Markdown
+    //   默认模式：跳过已存在的文件（保护用户对 body 的手动编辑，只更新 frontmatter）
+    //   --force 模式：强制覆盖 body（converter 本身有 bug 修复时需要）
     const typeDir = path.join(notesOutDir, result.frontmatter.type);
     fs.mkdirSync(typeDir, { recursive: true });
     const mdPath = path.join(typeDir, `${note.id}.md`);
-    if (!fs.existsSync(mdPath)) {
+    if (!fs.existsSync(mdPath) || force) {
       const mdContent = buildMarkdownString(result);
       fs.writeFileSync(mdPath, '\uFEFF' + mdContent, 'utf8');
     }

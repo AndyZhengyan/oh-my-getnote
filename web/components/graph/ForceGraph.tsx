@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
+import { DOMAIN_COLORS } from '@/lib/constants';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -15,17 +16,6 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
     </div>
   ),
 });
-
-const DOMAIN_COLORS: Record<string, string> = {
-  'AI 核心技术与模型':     '#6366F1',
-  'AI 产业生态与巨头':    '#8B5CF6',
-  'AI 智能体与工程':      '#10B981',
-  '管理、职场与个人成长':  '#F59E0B',
-  '行业应用与生活闲谈':   '#EC4899',
-  '企业数字化与数据治理':  '#3B82F6',
-  '社会、安全与伦理':      '#A855F7',
-  '其他':                  '#9CA3AF',
-};
 
 type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral' | 'ghost' | 'trajectory';
 
@@ -517,7 +507,7 @@ export default function ForceGraph() {
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid var(--border)',
-            borderRadius: 10,
+            borderRadius: 'var(--radius-md)',
             boxShadow: 'var(--shadow-md)',
             padding: '10px 14px',
             maxWidth: 240,
