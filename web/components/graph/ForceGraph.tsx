@@ -171,53 +171,33 @@ export default function ForceGraph() {
       // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
-        if (nodes.length === 1) {
-          // Single node: center it, fix zoom at 1.2, then kill the simulation
-          // so it cannot drift regardless of residual alpha.
-          fgRef.current.centerAt(dims.w / 2, dims.h / 2, 400);
-          fgRef.current.zoom(1.2, 400);
-          // d3Force('') returns the raw d3 simulation (registered under empty-string key
-          // in force-graph's internals). Call .alpha(0) to stop physics immediately.
-          try {
-            // @ts-ignore
-            fgRef.current.d3Force('')?.alpha(0);
-          } catch { /* ignore if internals changed */ }
-          fgRef.current.pauseAnimation();
+        if (nodes.length <= 4) {
+          // Few nodes: we've set fx/fy to 0 in buildGraphData.
+          // Center the view at node origin (0,0) and use custom zoom.
+          fgRef.current.centerAt(0, 0, 400);
+          fgRef.current.zoom(nodes.length === 1 ? 1.5 : 1.0, 400);
+          // Re-clear cache so they don't jump back to old positions on next filter
+          if ((globalThis as any)._nodePosCache) {
+            nodes.forEach(n => (globalThis as any)._nodePosCache.delete(n.id));
+          }
         } else {
-          const padding = nodes.length < 5 ? 350 : nodes.length < 10 ? 250 : nodes.length < 20 ? 150 : 100;
+          // Multi-node: use standard zoomToFit.
           fgRef.current.centerAt(dims.w / 2, dims.h / 2, 1);
-          fgRef.current.zoomToFit(800, padding);
+          fgRef.current.zoomToFit(800, 100);
           fgRef.current.d3ReheatSimulation();
           fgRef.current.resumeAnimation();
-          // Stop simulation as soon as zoomToFit animation completes (~800ms).
-          // Without this, nodes continue drifting while alpha > 0 and will
-          // eventually drift out of the zoomed view, making nodes shrink away.
-          const freezeTimer = setTimeout(() => {
-            if (!fgRef.current) return;
-            try {
-              // @ts-ignore
-              fgRef.current.d3Force('')?.alpha(0);
-            } catch { /* ignore */ }
-            fgRef.current.pauseAnimation();
-          }, 900);
-          return () => clearTimeout(freezeTimer);
         }
       }, 100);
     }
   }, [nodes, dims]);
 
-  // Initial pause: let simulation settle, then pause RAF loop.
-  // The canvas freezes — user can still zoom/pan smoothly (library handles transform natively).
-  // Any interaction call site calls resumeAnimation().
+  // Let simulation settle on initial load. After ~3s alpha decays enough that
+  // the RAF naturally exits (doRedraw = false when engine stops). We do NOT call
+  // pauseAnimation() here — it cancels pending RAF callbacks including click
+  // handlers, which would make all nodes unclickable.
   useEffect(() => {
     if (!fgRef.current || nodes.length === 0) return;
-    const timer = setTimeout(() => {
-      if (fgRef.current) fgRef.current.pauseAnimation();
-    }, 3000);
-    return () => {
-      clearTimeout(timer);
-      if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
-    };
+    // No cleanup needed — alpha(0) is set by filter effect or this settles naturally
   }, [nodes.length]);
 
   useEffect(() => {
@@ -354,8 +334,12 @@ export default function ForceGraph() {
         height={dims.h}
         onZoom={handleZoom as (transform: { k: number }) => void}
         nodeCanvasObject={(node: unknown, ctx: CanvasRenderingContext2D, globalScale: number) => {
-          const n = node as GraphNode & { x?: number; y?: number };
+          const n = node as GraphNode & { x?: number; y?: number; vx?: number; vy?: number };
           if (n.x == null || n.y == null) return;
+
+          // Update cache for re-renders/filters
+          if (!(globalThis as any)._nodePosCache) (globalThis as any)._nodePosCache = new Map();
+          (globalThis as any)._nodePosCache.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy });
 
           const level = levelMap.get(n.id) ?? 'peripheral';
           const visual = getNodeVisual(level);
@@ -504,7 +488,14 @@ export default function ForceGraph() {
         onNodeDragEnd={() => {
           if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
           dragEndTimerRef.current = setTimeout(() => {
-            if (fgRef.current) fgRef.current.pauseAnimation();
+            // Do NOT call pauseAnimation() — it cancels click RAFs.
+            // Just set alpha manually to 0 if we want to freeze physics.
+            if (fgRef.current) {
+              try {
+                // @ts-ignore
+                fgRef.current.d3Force('')?.alpha(0);
+              } catch { /* ignore */ }
+            }
           }, 2000);
         }}
         onBackgroundClick={handleBackgroundClick as (e: MouseEvent) => void}
@@ -574,15 +565,39 @@ function buildGraphData(
   }
 
   // Second pass: build nodes and links
-  // Limit connections shown when nothing is selected (no performance penalty on force sim)
   const showAllConnections = selectedNodeId !== null || focusedNodeId !== null;
   const MAX_CONNS_PER_NODE = showAllConnections ? Infinity : 3;
+
+  const isFewNodes = activeIds.size <= 4;
 
   for (const id of activeIds) {
     const entry = index.index[id]!;
     if (!seenNodes.has(id)) {
       seenNodes.add(id);
-      nodes.push({ id, title: entry.title, domain: entry.domain, type: entry.type, connections: entry.connections.length, snippet: entry.bodyPreview ?? '' });
+      // @ts-ignore - Check if we have this node in global position cache
+      const cached = (globalThis as any)._nodePosCache?.get(id);
+
+      const node: any = {
+        id, title: entry.title, domain: entry.domain, type: entry.type,
+        connections: entry.connections.length, snippet: entry.bodyPreview ?? '',
+        ...cached
+      };
+
+      // If very few nodes, force them toward origin so they don't spawn
+      // at (0,0) and then drift away due to big zoom scaling.
+      if (isFewNodes) {
+        node.fx = 0;
+        node.fy = 0;
+        // Spread them out slightly if multiple
+        if (activeIds.size > 1) {
+          const idx = nodes.length;
+          const angle = (idx / activeIds.size) * Math.PI * 2;
+          node.fx = Math.cos(angle) * 20;
+          node.fy = Math.sin(angle) * 20;
+        }
+      }
+
+      nodes.push(node);
     }
 
     // Sort by score descending and take top-N when in default view
