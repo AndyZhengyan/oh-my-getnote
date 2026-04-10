@@ -18,7 +18,7 @@
     "build": "cd web && npx next build",
     "typecheck": "cd web && npx tsc --noEmit",
     "backfill": "npx tsx scripts/backfill.ts",
-    "convert": "npx tsx tools/convert.ts"
+    "convert": "npx tsc && npx tsx tools/convert.ts"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
