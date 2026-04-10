@@ -71,10 +71,10 @@ async function main() {
   const outDir = outFlagIdx >= 0 ? args[outFlagIdx + 1] : '.';
   const force = args.includes('--force');
 
-  const notesDir = path.join(sourceDir, 'notes');
+  // 如果 sourceDir 下有 notes/ 目录，使用它；否则直接使用 sourceDir
+  let notesDir = path.join(sourceDir, 'notes');
   if (!fs.existsSync(notesDir)) {
-    console.error(`错误：找不到 notes 目录：${notesDir}`);
-    process.exit(1);
+    notesDir = sourceDir;
   }
 
   const notesOutDir = path.join(outDir, 'notes');
@@ -85,6 +85,12 @@ async function main() {
   // 1. 解析所有 HTML
   console.log('📖 解析 HTML 文件...');
   const htmlFiles = fs.readdirSync(notesDir).filter(f => f.endsWith('.html'));
+
+  if (htmlFiles.length === 0) {
+    console.error(`错误：在 ${notesDir} 中未找到 HTML 文件。`);
+    process.exit(1);
+  }
+
   const notes: Note[] = [];
   for (const file of htmlFiles) {
     const note = parseHtmlFile(path.join(notesDir, file));
