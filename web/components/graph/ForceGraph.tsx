@@ -17,7 +17,7 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ),
 });
 
-type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral' | 'ghost';
+type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral' | 'ghost' | 'trajectory';
 
 interface GraphNode {
   id: string;
@@ -47,16 +47,23 @@ export function buildLevelMap(
   selectedNodeId: string | null,
   focusedNodeId: string | null,
   focusedNeighborIds: string[] | Set<string>,
+  browsePath: string[],
   graphIndex: GraphIndex | null,
 ): ReadonlyMap<string, NodeLevel> {
   if (!graphIndex) return new Map();
 
   // Build full level assignment by BFS from the seed node
   const result = new Map<string, NodeLevel>();
+
+  // Mark trajectory nodes first — they are the core identity
+  for (const id of browsePath) result.set(id, 'trajectory');
+
   const seedId = selectedNodeId ?? focusedNodeId;
   if (!seedId) {
-    // Nothing selected — all peripheral
-    for (const id of Object.keys(graphIndex.index)) result.set(id, 'peripheral');
+    // Nothing selected — remaining peripheral (except trajectory)
+    for (const id of Object.keys(graphIndex.index)) {
+      if (!result.has(id)) result.set(id, 'peripheral');
+    }
     return result;
   }
 
@@ -97,11 +104,12 @@ export function buildLevelMap(
 
 function getNodeVisual(level: NodeLevel) {
   switch (level) {
-    case 'focused': return { alpha: 1.0, rBase: 8, rScale: 1.0, ghost: false };
-    case 'level1':  return { alpha: 0.7,  rBase: 5, rScale: 1.0, ghost: false };
-    case 'level2':  return { alpha: 0.4,  rBase: 4, rScale: 0.85, ghost: false };
-    case 'ghost':    return { alpha: 0.06, rBase: 2, rScale: 0.5, ghost: true };
-    default:         return { alpha: 0.85, rBase: 3, rScale: 1.0, ghost: false };
+    case 'focused':    return { alpha: 1.0, rBase: 8, rScale: 1.1, ghost: false };
+    case 'trajectory': return { alpha: 1.0, rBase: 7, rScale: 1.0, ghost: false };
+    case 'level1':     return { alpha: 0.8, rBase: 5, rScale: 1.0, ghost: false };
+    case 'level2':     return { alpha: 0.2, rBase: 4, rScale: 0.8, ghost: false };
+    case 'ghost':      return { alpha: 0.04, rBase: 2, rScale: 0.5, ghost: true };
+    default:           return { alpha: 0.5, rBase: 3, rScale: 1.0, ghost: false };
   }
 }
 
@@ -123,8 +131,8 @@ export default function ForceGraph() {
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
 
   const levelMap = useMemo(
-    () => buildLevelMap(selectedNodeId, focusedNodeId, focusedNeighborIds, graphIndex),
-    [selectedNodeId, focusedNodeId, focusedNeighborIds, graphIndex]
+    () => buildLevelMap(selectedNodeId, focusedNodeId, focusedNeighborIds, browsePath, graphIndex),
+    [selectedNodeId, focusedNodeId, focusedNeighborIds, browsePath, graphIndex]
   );
 
   const { nodes, links } = useMemo(
@@ -333,61 +341,57 @@ export default function ForceGraph() {
           const visual = getNodeVisual(level);
           const maxConn = 10;
           const r = (visual.rBase + Math.min(n.connections / 2, maxConn)) * visual.rScale;
-          const color = DOMAIN_COLORS[n.domain] ?? '#9CA3AF';
+          const domainColor = DOMAIN_COLORS[n.domain] ?? '#9CA3AF';
 
           ctx.globalAlpha = visual.alpha;
 
-          // Breathing glow for right-click focused nodes — use simple shadow instead of gradient
-          if (level === 'focused') {
-            const pulse = Math.sin(Date.now() / 500) > 0;
-            ctx.shadowColor = 'rgba(0,245,255,0.6)';
-            ctx.shadowBlur = pulse ? 20 : 10;
+          // Determine role
+          const pathIdx = browsePath.indexOf(n.id);
+          const isTrajectory = pathIdx !== -1;
+          const isCurrent = n.id === selectedNodeId || level === 'focused';
+          const isRecommendation = (level === 'level1' || level === 'level2') && !isTrajectory;
+
+          // Breathing glow for current location
+          if (isCurrent) {
+            const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
+            ctx.shadowColor = isTrajectory ? '#7C3AED' : '#F59E0B';
+            ctx.shadowBlur = 10 + pulse * 15;
           }
 
-          // Static halo for selected nodes
-          if (n.id === selectedNodeId) {
-            const haloR = r * 3.5;
-            const grad = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, haloR);
-            grad.addColorStop(0, 'rgba(124,58,237,0.22)');
-            grad.addColorStop(1, 'rgba(124,58,237,0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, haloR, 0, Math.PI * 2);
-            ctx.fill();
+          // Render node body by role
+          let fillStyle = domainColor;
+          if (isTrajectory) {
+            const age = browsePath.length - 1 - pathIdx;
+            const opacity = Math.max(0.3, 1 - age * 0.15);
+            fillStyle = `rgba(124, 58, 237, ${opacity})`;
+          } else if (isRecommendation) {
+            fillStyle = '#F59E0B';
           }
 
-          // Node circle
-          const nodeColor = n.id === selectedNodeId || level === 'focused' ? '#7C3AED' : color;
           ctx.beginPath();
           ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-          ctx.fillStyle = nodeColor;
+          ctx.fillStyle = fillStyle;
           ctx.fill();
 
-          if (n.id === selectedNodeId) {
+          // Current node white ring
+          if (isCurrent) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.stroke();
           }
 
-          // Trail highlight
-          if (trailNodeSet.has(n.id)) {
-            ctx.globalAlpha = 1;
-            ctx.strokeStyle = '#7C3AED';
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-          }
-
-          // Multi-hop selection ring (browsePath nodes)
-          if (browsePath.includes(n.id)) {
-            ctx.globalAlpha = Math.max(visual.alpha, 0.5);
-            ctx.strokeStyle = '#F59E0B';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([3, 3]);
+          // Trajectory history dashed ring (not current)
+          if (isTrajectory && !isCurrent) {
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([2, 2]);
             ctx.beginPath();
-            ctx.arc(n.x, n.y, r + 4, 0, Math.PI * 2);
+            ctx.arc(n.x, n.y, r + 3, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
           }
+
+          ctx.shadowBlur = 0;
 
           // Reset shadow after glow node
           ctx.shadowBlur = 0;
@@ -397,7 +401,7 @@ export default function ForceGraph() {
           // - globalScale 0.5–1.2: mid view → node title
           // - globalScale > 1.2: close view → title + first 2 lines of body
           if (!visual.ghost && globalScale >= 0.5) {
-            const labelColor = level === 'focused' ? '#7C3AED' : '#9CA3AF';
+            const labelColor = level === 'focused' || level === 'trajectory' ? '#7C3AED' : '#9CA3AF';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
@@ -436,39 +440,35 @@ export default function ForceGraph() {
           const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
           const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
 
-          // Ghost check via pre-computed levelMap — O(1) lookup
           const sLevel = levelMap.get(sid) ?? 'peripheral';
           const tLevel = levelMap.get(tid) ?? 'peripheral';
           if (sLevel === 'ghost' || tLevel === 'ghost') return 'rgba(0,0,0,0)';
 
-          // Trail edges always visible
-          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#7C3AED';
-          // When a node is selected: only show edges within focal set
+          // 1. Trajectory edges — Amber solid (my history path)
+          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#F59E0B';
+
+          // 2. Recommendation edges from current node — Faint amber
           if (selectedNodeId || focusMode) {
+            const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
+            if (isFromCurrent && (sLevel === 'level1' || tLevel === 'level1')) {
+              return 'rgba(245, 158, 11, 0.4)';
+            }
             if (sLevel === 'level1' || tLevel === 'level1') {
-              return sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId
-                ? '#7C3AED'
-                : 'rgba(124,58,237,0.25)';
+              return 'rgba(124, 58, 237, 0.1)';
             }
             return 'rgba(0,0,0,0.01)';
           }
-          return 'rgba(0,0,0,0.07)';
+          return 'rgba(0,0,0,0.04)';
         }}
         linkWidth={(link: unknown) => {
           const l = link as { source: { id: string } | string; target: { id: string } | string };
           const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
           const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
 
-          const sLevel = levelMap.get(sid) ?? 'peripheral';
-          const tLevel = levelMap.get(tid) ?? 'peripheral';
-          if (sLevel === 'ghost' || tLevel === 'ghost') return 0;
-
-          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return 2;
-          if (selectedNodeId || focusMode) {
-            if (sLevel === 'level1' || tLevel === 'level1') return sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId ? 1.5 : 0.8;
-            return 0.3;
-          }
-          return 0.6;
+          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return 2.5;
+          const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
+          if (isFromCurrent) return 1.2;
+          return 0.5;
         }}
         onNodeClick={handleNodeClick as (node: unknown) => void}
         onNodeRightClick={handleNodeRightClick as (node: unknown) => void}
