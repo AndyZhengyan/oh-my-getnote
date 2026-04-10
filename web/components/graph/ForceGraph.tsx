@@ -55,7 +55,7 @@ export function buildLevelMap(
   // Build full level assignment by BFS from the seed node
   const result = new Map<string, NodeLevel>();
 
-  // Mark trajectory nodes first — they are the core identity
+  // 1. Mark trajectory nodes — core identity
   for (const id of browsePath) result.set(id, 'trajectory');
 
   const seedId = selectedNodeId ?? focusedNodeId;
@@ -345,7 +345,7 @@ export default function ForceGraph() {
 
           ctx.globalAlpha = visual.alpha;
 
-          // Determine role
+          // 1. Determine "Role" for coloring
           const pathIdx = browsePath.indexOf(n.id);
           const isTrajectory = pathIdx !== -1;
           const isCurrent = n.id === selectedNodeId || level === 'focused';
@@ -358,13 +358,16 @@ export default function ForceGraph() {
             ctx.shadowBlur = 10 + pulse * 15;
           }
 
-          // Render node body by role
+          // 2. Render Node Body
           let fillStyle = domainColor;
           if (isTrajectory) {
+            // Purple gradient based on recency
+            // Last node (isCurrent) is deep purple, older nodes fade
             const age = browsePath.length - 1 - pathIdx;
             const opacity = Math.max(0.3, 1 - age * 0.15);
             fillStyle = `rgba(124, 58, 237, ${opacity})`;
           } else if (isRecommendation) {
+            // Recommendations are Amber
             fillStyle = '#F59E0B';
           }
 
@@ -373,14 +376,14 @@ export default function ForceGraph() {
           ctx.fillStyle = fillStyle;
           ctx.fill();
 
-          // Current node white ring
+          // 3. Render Selection/Tracing Overlays
           if (isCurrent) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.stroke();
           }
 
-          // Trajectory history dashed ring (not current)
+          // Trail highlight (amber dashed circle for ANY node in browsePath to show it's part of history)
           if (isTrajectory && !isCurrent) {
             ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
             ctx.lineWidth = 1.5;
@@ -391,9 +394,7 @@ export default function ForceGraph() {
             ctx.setLineDash([]);
           }
 
-          ctx.shadowBlur = 0;
-
-          // Reset shadow after glow node
+          // Reset shadow
           ctx.shadowBlur = 0;
 
           // Semantic zoom: content varies by zoom level
@@ -401,7 +402,7 @@ export default function ForceGraph() {
           // - globalScale 0.5–1.2: mid view → node title
           // - globalScale > 1.2: close view → title + first 2 lines of body
           if (!visual.ghost && globalScale >= 0.5) {
-            const labelColor = level === 'focused' || level === 'trajectory' ? '#7C3AED' : '#9CA3AF';
+            const labelColor = level === 'focused' ? '#7C3AED' : '#9CA3AF';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
@@ -444,17 +445,17 @@ export default function ForceGraph() {
           const tLevel = levelMap.get(tid) ?? 'peripheral';
           if (sLevel === 'ghost' || tLevel === 'ghost') return 'rgba(0,0,0,0)';
 
-          // 1. Trajectory edges — Amber solid (my history path)
+          // 1. Trail edges (My logic steps) -> Amber solid
           if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#F59E0B';
 
-          // 2. Recommendation edges from current node — Faint amber
+          // 2. Recommendation edges (Future steps from current node) -> Faint Amber
           if (selectedNodeId || focusMode) {
             const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
             if (isFromCurrent && (sLevel === 'level1' || tLevel === 'level1')) {
-              return 'rgba(245, 158, 11, 0.4)';
+              return 'rgba(245, 158, 11, 0.4)'; // Faint amber for "Future paths"
             }
             if (sLevel === 'level1' || tLevel === 'level1') {
-              return 'rgba(124, 58, 237, 0.1)';
+              return 'rgba(124, 58, 237, 0.1)'; // Very faint purple for background relations
             }
             return 'rgba(0,0,0,0.01)';
           }
@@ -465,9 +466,12 @@ export default function ForceGraph() {
           const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
           const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
 
-          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return 2.5;
+          const isTrajectory = trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`);
+          if (isTrajectory) return 2.5;
+
           const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
           if (isFromCurrent) return 1.2;
+
           return 0.5;
         }}
         onNodeClick={handleNodeClick as (node: unknown) => void}
