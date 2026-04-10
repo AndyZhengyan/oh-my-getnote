@@ -33,7 +33,7 @@ export default function LeftNav() {
     browsePath, browsePathShow, setBrowsePathShow,
     clearBrowsePath, removeFromBrowsePath,
     savedTrails,
-    playTrail, stopTrailPlayback, deleteTrail, saveTrail,
+    deleteTrail, saveTrail,
     selectNode,
   } = useGraphStore();
 

@@ -17,7 +17,7 @@ function fixMarkdownLineBreaks(body: string): string {
   return fixed;
 }
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
 import { X, Sparkles, Loader2, Maximize, Minimize, ExternalLink } from 'lucide-react';
@@ -82,12 +82,8 @@ export default function RightPanel() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [recTooltip, setRecTooltip] = useState<{ noteId: string; x: number; y: number } | null>(null);
-  const [recSummary, setRecSummary] = useState<string>('');
-  const recHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setRecTooltip(null);
     setAiError(null);
     if (!selectedNodeId || !graphIndex) { setNote(null); setAiSummary(null); return; }
     const entry = graphIndex.index[selectedNodeId];
@@ -128,35 +124,9 @@ export default function RightPanel() {
           body: JSON.stringify({ path: graphIndex.index[selectedNodeId].path, frontmatter: { ...note.frontmatter, ai_summary: data.summary } }),
         });
       }
-    } catch (err) { setAiError('AI 摘要生成失败，请检查网络或 API 配置'); }
+    } catch { setAiError('AI 摘要生成失败，请检查网络或 API 配置'); }
     finally { setAiLoading(false); }
   }, [selectedNodeId, note, graphIndex]);
-
-  const handleRecHover = useCallback((noteId: string, e: React.MouseEvent) => {
-    if (recTooltip?.noteId === noteId) return;
-    if (recHoverTimerRef.current) clearTimeout(recHoverTimerRef.current);
-    recHoverTimerRef.current = setTimeout(async () => {
-      const path = graphIndex?.index[noteId]?.path;
-      if (!path) return;
-      setRecTooltip({ noteId, x: e.clientX, y: e.clientY });
-      const loaded = await loadNote(path);
-      if (loaded?.body) {
-        const preview = loaded.body
-          .split('\n')
-          .filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('---'))
-          .slice(0, 3)
-          .join('\n')
-          .slice(0, 200);
-        setRecSummary(preview);
-      }
-    }, 250);
-  }, [recTooltip, graphIndex]);
-
-  const handleRecMouseLeave = useCallback(() => {
-    if (recHoverTimerRef.current) clearTimeout(recHoverTimerRef.current);
-    setRecTooltip(null);
-    setRecSummary('');
-  }, []);
 
   if (!selectedNodeId || !graphIndex) return null;
   const entry = graphIndex.index[selectedNodeId];
@@ -328,32 +298,6 @@ export default function RightPanel() {
           })()}
         </div>
       </motion.aside>
-
-      {/* Similar notes tooltip */}
-      {recTooltip && recSummary && (
-        <div
-          style={{
-            position: 'fixed',
-            left: recTooltip.x - 20,
-            top: recTooltip.y - 10,
-            transform: 'translateX(-100%)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-md)',
-            padding: '10px 14px',
-            maxWidth: 260,
-            zIndex: 999,
-            pointerEvents: 'none',
-          }}
-        >
-          <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'hidden' }}>
-            {recSummary}…
-          </div>
-        </div>
-      )}
     </AnimatePresence>
   );
 }
