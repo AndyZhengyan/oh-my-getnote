@@ -1,6 +1,6 @@
-# Contributing to Memex for Getnote
+# Contributing to Oh My Getnote
 
-Thank you for your interest in contributing to Memex for Getnote — a knowledge graph application that helps you explore and understand your notes as an interactive graph.
+Thank you for your interest in contributing to Oh My Getnote — a knowledge graph application that helps you explore and understand your notes as an interactive graph.
 
 ## Welcome
 

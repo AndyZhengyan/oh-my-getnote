@@ -1,12 +1,22 @@
 {
-  "name": "memex-for-getnote-web",
+  "name": "oh-my-getnote-web",
   "version": "0.1.0",
-  "description": "Memex for Getnote web app — knowledge graph visualization and search",
+  "description": "Oh My Getnote web app — knowledge graph visualization and search",
   "author": "Andy Zhengyan",
-  "repository": { "type": "git", "url": "https://github.com/AndyZhengyan/memex-for-getnote.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndyZhengyan/memex-for-getnote.git"
+  },
   "license": "MIT",
-  "keywords": ["knowledge-graph", "nextjs", "ai", "memex"],
-  "bugs": { "url": "https://github.com/AndyZhengyan/memex-for-getnote/issues" },
+  "keywords": [
+    "knowledge-graph",
+    "nextjs",
+    "ai",
+    "memex"
+  ],
+  "bugs": {
+    "url": "https://github.com/AndyZhengyan/memex-for-getnote/issues"
+  },
   "homepage": "https://github.com/AndyZhengyan/memex-for-getnote#readme",
   "private": true,
   "scripts": {
@@ -14,6 +24,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -28,6 +40,7 @@
     "react-force-graph-2d": "^1.29.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "turndown": "^7.2.4",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -36,6 +49,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
