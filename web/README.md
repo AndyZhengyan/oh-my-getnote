@@ -1,4 +1,4 @@
-# Memex for Getnote
+# oh-my-getnote
 
 A knowledge graph application that turns your markdown notes into an interactive, searchable, and AI-powered graph of connected ideas.
 
@@ -15,7 +15,7 @@ A knowledge graph application that turns your markdown notes into an interactive
 ## Architecture Overview
 
 ```
-my-getnote-kg/
+oh-my-getnote/
 ├── notes/               # Markdown source files (your notes live here)
 ├── scripts/
 │   └── backfill.ts      # Backfills LanceDB vector store from notes/

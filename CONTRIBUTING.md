@@ -1,10 +1,10 @@
-# Contributing to Memex for Getnote
+# Contributing to oh-my-getnote
 
 Thank you for your interest in contributing to Memex for Getnote — a knowledge graph application that helps you explore and understand your notes as an interactive graph.
 
 ## Welcome
 
-We welcome contributions of all kinds: bug fixes, feature improvements, documentation, and tests. Before diving in, please check the [issue tracker](https://github.com/AndyZhengyan/my-getnote-kg/issues) to see what's already being worked on.
+We welcome contributions of all kinds: bug fixes, feature improvements, documentation, and tests. Before diving in, please check the [issue tracker](https://github.com/AndyZhengyan/oh-my-getnote/issues) to see what's already being worked on.
 
 ## Code of Conduct
 
@@ -21,8 +21,8 @@ All contributors are expected to follow our [Code of Conduct](./CODE_OF_CONDUCT.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/AndyZhengyan/my-getnote-kg.git
-   cd my-getnote-kg
+   git clone https://github.com/AndyZhengyan/oh-my-getnote.git
+   cd oh-my-getnote
    ```
 
 2. **Install dependencies**
@@ -59,7 +59,7 @@ npm run e2e
 ## Project Structure
 
 ```
-my-getnote-kg/
+oh-my-getnote/
 ├── web/               # Next.js frontend
 │   ├── app/           # Next.js App Router pages
 │   ├── components/    # React components
@@ -109,7 +109,7 @@ Format: `<type>(<scope>): <description>` — use imperative mood, keep the subje
 
 ## Reporting Bugs
 
-Found a bug? Please open a [GitHub Issue](https://github.com/AndyZhengyan/my-getnote-kg/issues). Include the following to help us reproduce and fix it:
+Found a bug? Please open a [GitHub Issue](https://github.com/AndyZhengyan/oh-my-getnote/issues). Include the following to help us reproduce and fix it:
 
 - A clear, descriptive title
 - Steps to reproduce the issue
@@ -119,7 +119,7 @@ Found a bug? Please open a [GitHub Issue](https://github.com/AndyZhengyan/my-get
 
 ## Suggesting Features
 
-We'd love to hear your ideas. Open a [GitHub Discussion](https://github.com/AndyZhengyan/my-getnote-kg/discussions) or create an issue labeled `enhancement`. Please describe:
+We'd love to hear your ideas. Open a [GitHub Discussion](https://github.com/AndyZhengyan/oh-my-getnote/discussions) or create an issue labeled `enhancement`. Please describe:
 
 - The problem you are trying to solve
 - How you envision the feature working

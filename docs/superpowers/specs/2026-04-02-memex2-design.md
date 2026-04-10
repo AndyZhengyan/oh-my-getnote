@@ -1,4 +1,4 @@
-# Memex 2.0 设计规范
+# oh-my-getnote 设计规范
 
 > 版本：v1.0 · 2026-04-02
 > 状态：已批准，待实施
@@ -20,7 +20,7 @@
 ### 2.1 目录结构
 
 ```
-my-getnote-kg/
+oh-my-getnote/
 ├── source/                          # 原始数据（Get笔记导出的 HTML）
 │   └── voicenotes-xxx/
 │       ├── notes/                   # HTML 文件 + 图片 + 音频

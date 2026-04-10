@@ -1,6 +1,6 @@
-# Memex for Getnote — Code of Conduct
+# oh-my-getnote — Code of Conduct
 
-This Code of Conduct applies to all repositories, issue trackers, discussion forums, pull requests, and other communication channels associated with the [Memex for Getnote](https://github.com/AndyZhengyan/memex-for-getnote) project. By participating, you agree to uphold its standards.
+This Code of Conduct applies to all repositories, issue trackers, discussion forums, pull requests, and other communication channels associated with the [oh-my-getnote](https://github.com/AndyZhengyan/memex-for-getnote) project. By participating, you agree to uphold its standards.
 
 ---
 

@@ -88,7 +88,7 @@ jobs:
 
 - [ ] **Step 2: 验证 CI 语法**
 
-Run: `cd /Users/zhengyan/Projects/ai-project/my-getnote-kg && npx act -l 2>/dev/null || echo "act not available, skip"`
+Run: `cd /Users/zhengyan/Projects/ai-project/oh-my-getnote && npx act -l 2>/dev/null || echo "act not available, skip"`
 
 Expected: act not available — 跳过本地验证，直接提交
 
@@ -110,7 +110,7 @@ git commit -m "ci: split into lint + test-and-build jobs, lint failure creates i
 - [ ] **Step 1: 写失败的测试**
 
 确认源码路径：
-Run: `ls /Users/zhengyan/Projects/ai-project/my-getnote-kg/tools/markdown.ts`
+Run: `ls /Users/zhengyan/Projects/ai-project/oh-my-getnote/tools/markdown.ts`
 
 然后创建 `web/tools/markdown.test.ts`：
 
@@ -295,7 +295,7 @@ describe('convertHtmlToMarkdown', () => {
 
 创建 `web/tools/markdown.ts`（复制 tools/markdown.ts 核心逻辑）：
 
-从 `/Users/zhengyan/Projects/ai-project/my-getnote-kg/tools/markdown.ts` 复制完整内容到 `web/tools/markdown.ts`。
+从 `/Users/zhengyan/Projects/ai-project/oh-my-getnote/tools/markdown.ts` 复制完整内容到 `web/tools/markdown.ts`。
 
 - [ ] **Step 3: 运行测试，确认部分通过**
 

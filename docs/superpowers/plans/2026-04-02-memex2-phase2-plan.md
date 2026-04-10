@@ -1,7 +1,7 @@
 # Memex 2.0 Phase 2 实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
-> **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
+> **Worktree**: `/Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2`
 
 **Status:** ✅ 已完成
 
@@ -106,7 +106,7 @@ body {
 - [ ] **Step 2: 提交**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2
 git add web/app/globals.css
 git commit -m "feat(phase2): add Strategic Dark Tech Design Tokens
 
@@ -125,7 +125,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 - [ ] **Step 1: 创建软链接**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2/web/public
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2/web/public
 
 # 软链接到项目根目录的 notes/images/graph-index.json
 ln -sf ../../notes notes
@@ -931,7 +931,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 - [ ] **Step 1: 构建**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2/web
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2/web
 npm run build 2>&1
 ```
 
@@ -950,7 +950,7 @@ Expected: HTML 返回正常
 - [ ] **Step 3: 提交**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2
 git add web/
 git commit -m "feat(phase2): complete Next.js scaffold with three-column layout
 

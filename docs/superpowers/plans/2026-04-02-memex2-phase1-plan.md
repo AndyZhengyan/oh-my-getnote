@@ -85,7 +85,7 @@ describe('convertHtmlToMarkdown', () => {
 
 - [ ] **Step 2: 运行测试验证失败**
 
-Run: `cd /Users/zhengyan/Projects/ai-project/my-getnote-kg && npx vitest run tests/tools/markdown.test.ts`
+Run: `cd /Users/zhengyan/Projects/ai-project/oh-my-getnote && npx vitest run tests/tools/markdown.test.ts`
 Expected: FAIL — `tools/markdown.ts` not found
 
 - [ ] **Step 3: 实现 minimal 骨架**
@@ -619,7 +619,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 - [ ] **Step 1: 运行完整转换**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote
 npx tsx tools/convert.ts \
   ./source/voicenotes-202603272159-getnotes_archive_1a71a34b40018ee0wflq7pEq/ \
   --out ./

@@ -1,7 +1,7 @@
 # Memex 2.0 Phase 5 实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
-> **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
+> **Worktree**: `/Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2`
 > **基于**: `phase2/nextjs-scaffold` 分支（已包含 Phase 2 + Phase 3）
 
 **Status:** ✅ 已完成
@@ -746,7 +746,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 - [ ] **Step 1: 构建**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2/web
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2/web
 npm run build 2>&1
 ```
 
@@ -755,7 +755,7 @@ Expected: 成功。如果 TypeScript 报错，报告错误内容并修复。
 - [ ] **Step 2: dev server 验证**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2/web
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2/web
 npm run dev &
 sleep 8
 curl -s http://localhost:3000/graph | grep -c 'Memex\|知识\|导航' || echo "page loaded"
@@ -765,7 +765,7 @@ pkill -f "next dev" 2>/dev/null; echo "done"
 - [ ] **Step 3: 提交全部变更**
 
 ```bash
-cd /Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2
+cd /Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2
 git add web/
 git commit -m "feat(phase5): complete LeftNav + RightPanel with AI summary and Markdown rendering
 

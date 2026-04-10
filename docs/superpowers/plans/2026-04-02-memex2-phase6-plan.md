@@ -1,6 +1,6 @@
 # Memex 2.0 Phase 6 实现计划
 
-> **Worktree**: `/Users/zhengyan/Projects/ai-project/my-getnote-kg/.worktrees/phase2`
+> **Worktree**: `/Users/zhengyan/Projects/ai-project/oh-my-getnote/.worktrees/phase2`
 > **基于**: `phase2/nextjs-scaffold` 分支（Phase 2–5 已完成）
 
 **Status:** ✅ 已完成

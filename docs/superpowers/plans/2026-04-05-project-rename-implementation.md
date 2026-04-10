@@ -1,10 +1,10 @@
-# 项目重命名实施计划：my-getnote-kg → oh-my-getnote
+# 项目重命名实施计划：oh-my-getnote → oh-my-getnote
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Status:** ✅ 已完成
 
-**Goal:** 将 `my-getnote-kg` 目录统一重命名为 `oh-my-getnote`，代码/文档中所有旧引用已确认无需修改。
+**Goal:** 将 `oh-my-getnote` 目录统一重命名为 `oh-my-getnote`，代码/文档中所有旧引用已确认无需修改。
 
 **Architecture:** grep 确认结果显示 display name（Oh My Getnote）和 package.json 均已正确，仅需修改一处文档中的目录结构示意路径，然后执行目录重命名。
 
@@ -25,7 +25,7 @@ grep 结果证明：**代码层面无需任何修改**。
 | `web/package.json:2` | `"name": "web"` | ✅ 无需改动（子包命名规范） |
 
 **唯一需要修改的位置：**
-- `docs/superpowers/specs/2026-04-02-memex2-design.md:23` — 目录结构示意图中 `my-getnote-kg/` → `oh-my-getnote/`
+- `docs/superpowers/specs/2026-04-02-memex2-design.md:23` — 目录结构示意图中 `oh-my-getnote/` → `oh-my-getnote/`
 
 ---
 
@@ -36,16 +36,16 @@ grep 结果证明：**代码层面无需任何修改**。
 
 - [ ] **Step 1: 修改目录结构示意图**
 
-将第 23 行 `my-getnote-kg/` 改为 `oh-my-getnote/`
+将第 23 行 `oh-my-getnote/` 改为 `oh-my-getnote/`
 
 ```diff
-- my-getnote-kg/
+- oh-my-getnote/
 + oh-my-getnote/
 ```
 
-- [ ] **Step 2: 验证 grep 不再有 my-getnote-kg 路径引用**
+- [ ] **Step 2: 验证 grep 不再有 oh-my-getnote 路径引用**
 
-Run: `grep -r "my-getnote-kg" docs/superpowers/`
+Run: `grep -r "oh-my-getnote" docs/superpowers/`
 Expected: 仅剩 `2026-04-05-project-rename-design.md`（该文件本身就是记录重命名过程的文档，无需修改）
 
 - [ ] **Step 3: Commit**
@@ -76,14 +76,14 @@ gh pr create \
   --title "refactor: rename project directory to oh-my-getnote" \
   --body "$(cat <<'EOF'
 ## Summary
-- 更新 `docs/superpowers/specs/2026-04-02-memex2-design.md` 中的目录结构示意图：`my-getnote-kg/` → `oh-my-getnote/`
+- 更新 `docs/superpowers/specs/2026-04-02-memex2-design.md` 中的目录结构示意图：`oh-my-getnote/` → `oh-my-getnote/`
 - 代码层面无需修改（display name 和 package.json 均已正确）
 
 ## Changes
 - `docs/superpowers/specs/2026-04-02-memex2-design.md` — 目录结构路径
 
 ## Test plan
-- [x] `grep -r "my-getnote-kg" docs/superpowers/` 仅剩 rename-design 文档本身
+- [x] `grep -r "oh-my-getnote" docs/superpowers/` 仅剩 rename-design 文档本身
 - [x] display name grep 结果均为 Oh My Getnote（无需改动）
 - [x] package.json name 字段为 oh-my-getnote（无需改动）
 
@@ -113,7 +113,7 @@ Expected: PR merged，Issue #12 自动关闭
 cd /Users/zhengyan/Projects/ai-project
 
 # 重命名目录
-mv my-getnote-kg oh-my-getnote
+mv oh-my-getnote oh-my-getnote
 
 # 进入新目录验证
 cd oh-my-getnote
@@ -133,8 +133,8 @@ npm run lint
 # 验证 build
 npm run build
 
-# 验证无 my-getnote-kg 残留（排除 rename-design.md 本身）
-grep -r "my-getnote-kg" . --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" | grep -v "project-rename-design"
+# 验证无 oh-my-getnote 残留（排除 rename-design.md 本身）
+grep -r "oh-my-getnote" . --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" | grep -v "project-rename-design"
 # Expected: 无输出
 ```
 

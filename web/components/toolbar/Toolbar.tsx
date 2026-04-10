@@ -63,7 +63,7 @@ export default function Toolbar() {
     >
       {/* Logo */}
       <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.01em', flexShrink: 0 }}>
-        📚 Memex for Getnote
+        📚 oh-my-getnote
       </span>
 
       <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
