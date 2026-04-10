@@ -52,13 +52,18 @@ notes/*.md         graph-index.json
 
 ---
 
-## 致敬 Memex
+## 致敬 Memex & LLM Wiki
 
 Bush 在 1945 年写道：
 
 > *"人类将要产生的大量知识，将远将超出个人的吸收能力……我们需要一种机器，让知识间形成联想，正如大脑本身所做的那样。"*
 
-**Oh My Getnote** 是这一愿景的开源实现。它不是笔记管理，不是文件夹分类，而是让知识自己说话——沿着联想走，就能发现新的洞见。
+**Oh My Getnote** 是这一愿景的现代实现：
+
+- **Memex (1945)**: 沿袭 Vannevar Bush 的构想，让知识通过"足迹"（trail）产生关联，而非死板的分类。
+- **LLM Wiki (2024)**: 受 [Andrej Karpathy 构想](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)的启发，我们致力于构建一种 "persistent, compounding artifact"——知识不再是在每次查询时重复发现，而是在你与 AI 的交互中不断沉淀、互联、并持续增量的。
+
+这不是一个简单的笔记备份工具，而是让知识自己说话——通过 AI 的多跳关联与智能推荐，让那些藏在深处的连接自然浮现。
 
 ---
 
