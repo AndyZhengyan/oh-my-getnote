@@ -1,3 +1,5 @@
+<img src="docs/banner.png" alt="Oh My Getnote — 你的个人知识轨迹" width="100%"/>
+
 # Oh My Getnote
 
 > _"人脑不是那样运作的。它靠联想运转。"_ — 范内瓦尔·布什，1945
