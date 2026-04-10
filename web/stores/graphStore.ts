@@ -38,6 +38,22 @@ export interface Trail {
   steps: TrailStep[];
 }
 
+export interface RecommendedPath {
+  noteId: string;
+  title: string;
+  domain: string;
+  domainColor: string;
+  type: string;
+  score: number;
+  compositeScore: number;
+  text: string;
+  explanation: string;
+  whyFrom: string[];
+  isSaved: boolean;
+  bodyPreview?: string;
+  connections: Array<{ noteId: string; score: number; type: string }>;
+}
+
 /** Simple event bus for graph operations */
 let _resetFn: (() => void) | null = null;
 let _heatFn: (() => void) | null = null;
@@ -79,7 +95,7 @@ interface GraphState {
   setBrowsePathShow: (show: boolean) => void;
   removeFromBrowsePath: (id: string) => void;
   setBrowsePath: (path: string[]) => void;
-  saveTrail: (name: string) => void;
+  saveTrail: (name: string, stepsOverride?: TrailStep[]) => void;
   loadTrails: () => void;
   deleteTrail: (id: string) => void;
   playTrail: (id: string) => void;
@@ -87,6 +103,11 @@ interface GraphState {
   // Panel visibility
   multiHopPanelOpen: boolean;
   setMultiHopPanelOpen: (open: boolean) => void;
+  // Recommended paths for multi-hop search
+  recommendedPaths: RecommendedPath[];
+  setRecommendedPaths: (paths: RecommendedPath[]) => void;
+  clearRecommendedPaths: () => void;
+  markPathSaved: (noteId: string) => void;
 }
 
 function loadFromStorage(): Trail[] {
@@ -110,6 +131,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   savedTrails: [],
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
   multiHopPanelOpen: false,
+  recommendedPaths: [],
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -140,21 +162,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setCurrentScale: (scale) => set({ currentScale: scale }),
 
   clearBrowsePath: () => set({ browsePath: [] }),
-  setBrowsePathShow: (show: boolean) => set({ browsePathShow: show }),
+  setBrowsePathShow: (show) => set({ browsePathShow: show }),
   removeFromBrowsePath: (id) => set(state => {
     const idx = state.browsePath.indexOf(id);
     if (idx === -1) return {};
     return { browsePath: state.browsePath.slice(0, idx) };
   }),
   setBrowsePath: (path) => set({ browsePath: path }),
-  saveTrail: (name) => {
+  saveTrail: (name, stepsOverride) => {
     const state = get();
     if (!name.trim()) return;
     const trail: Trail = {
       id: `trail_${Date.now()}`,
       name: name.trim(),
       createdAt: new Date().toISOString(),
-      steps: state.browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
+      steps: stepsOverride ?? state.browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
     };
     const trails = [trail, ...state.savedTrails].slice(0, 20);
     saveToStorage(trails);
@@ -208,4 +230,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   setMultiHopPanelOpen: (open) => set({ multiHopPanelOpen: open }),
+
+  setRecommendedPaths: (paths) => set({ recommendedPaths: paths }),
+  clearRecommendedPaths: () => set({ recommendedPaths: [] }),
+  markPathSaved: (noteId) =>
+    set(state => ({
+      recommendedPaths: state.recommendedPaths.map(p =>
+        p.noteId === noteId ? { ...p, isSaved: true } : p,
+      ),
+    })),
 }));

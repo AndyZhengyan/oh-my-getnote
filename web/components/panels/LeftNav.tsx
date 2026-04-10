@@ -2,8 +2,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useGraphStore } from '@/stores/graphStore';
+import { useGraphStore, type RecommendedPath, type TrailStep } from '@/stores/graphStore';
 import { Bookmark, Trash2, X, Sparkles } from 'lucide-react';
+import { DOMAIN_COLORS } from '@/lib/constants';
+import { synthesizeRecommendedPaths, type VectorResult } from '@/lib/recommend';
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -13,17 +15,6 @@ function compareAlphaFirst(a: string, b: string): number {
   if (!aIsEN && bIsEN) return 1;
   return a.localeCompare(b, 'zh-CN');
 }
-
-const DOMAIN_COLORS: Record<string, string> = {
-  'AI 核心技术与模型':   '#6366F1',
-  'AI 产业生态与巨头':  '#8B5CF6',
-  'AI 智能体与工程':    '#10B981',
-  '管理、职场与个人成长': '#F59E0B',
-  '行业应用与生活闲谈': '#EC4899',
-  '企业数字化与数据治理': '#3B82F6',
-  '社会、安全与伦理':  '#A855F7',
-  '其他':               '#9CA3AF',
-};
 
 export default function LeftNav() {
   const {
@@ -35,9 +26,9 @@ export default function LeftNav() {
     savedTrails,
     playTrail, stopTrailPlayback, deleteTrail, saveTrail,
     selectNode,
+    recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; title: string; type: string; score: number }>>([]);
   const [searching, setSearching] = useState(false);
 
   const handleVectorSearch = async () => {
@@ -52,9 +43,15 @@ export default function LeftNav() {
         body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
       });
       const data = await res.json();
-      setSearchResults(data.results ?? []);
+      const rawResults: VectorResult[] = data.results ?? [];
+      const paths = synthesizeRecommendedPaths(
+        rawResults,
+        browsePath,
+        graphIndex?.index ?? null,
+      );
+      setRecommendedPaths(paths);
     } catch {
-      setSearchResults([]);
+      setRecommendedPaths([]);
     } finally {
       setSearching(false);
     }
@@ -304,30 +301,27 @@ export default function LeftNav() {
                   {searching ? '搜索中…' : '多跳搜索'}
                 </button>
 
-                {searchResults.length > 0 && (
+                {recommendedPaths.length > 0 && (
                   <div style={{ marginTop: 8, padding: '0 16px 4px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      推荐结果
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      推荐链路
                     </div>
-                    {searchResults.map(r => (
-                      <div key={r.id} style={{
-                        padding: '5px 8px',
-                        marginBottom: 3,
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontSize: 11,
-                      }}
-                      onClick={() => selectNode(r.id)}
-                      >
-                        <div style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.title}
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 1 }}>
-                          {r.type} · {(r.score * 100).toFixed(0)}%
-                        </div>
-                      </div>
+                    {recommendedPaths.map((path, rank) => (
+                      <RecommendedPathCard
+                        key={path.noteId}
+                        path={path}
+                        rank={rank + 1}
+                        onSelect={() => selectNode(path.noteId)}
+                        onSaveTrail={() => {
+                          const trailSteps: TrailStep[] = [
+                            ...browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
+                            { noteId: path.noteId, timestamp: new Date().toISOString() },
+                          ];
+                          const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+                          saveTrail(`推荐路线 ${date}`, trailSteps);
+                          markPathSaved(path.noteId);
+                        }}
+                      />
                     ))}
                   </div>
                 )}
@@ -372,6 +366,192 @@ export default function LeftNav() {
         </div>
       </div>
     </aside>
+  );
+}
+
+function RecommendedPathCard({
+  path, rank, onSelect, onSaveTrail,
+}: {
+  path: RecommendedPath;
+  rank: number;
+  onSelect: () => void;
+  onSaveTrail: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const rankBgColors = ['#6366F1', '#8B5CF6', '#10B981'];
+  const rankBg = rankBgColors[rank - 1] ?? '#9CA3AF';
+
+  return (
+    <div style={{
+      marginBottom: 6,
+      background: 'var(--bg-elevated)',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      overflow: 'hidden',
+      fontFamily: 'var(--font-ui)',
+    }}>
+      {/* Card header — always visible */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          padding: '8px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'pointer',
+          background: expanded ? 'rgba(0,0,0,0.02)' : 'transparent',
+          transition: 'background 0.12s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-light)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = expanded ? 'rgba(0,0,0,0.02)' : 'transparent'; }}
+      >
+        {/* Rank badge */}
+        <span style={{
+          width: 18, height: 18, borderRadius: 4,
+          background: rankBg,
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {rank}
+        </span>
+
+        {/* Domain color dot */}
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: path.domainColor,
+          flexShrink: 0,
+        }} />
+
+        {/* Title */}
+        <span style={{
+          flex: 1,
+          fontSize: 12,
+          color: 'var(--text-primary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {path.title}
+        </span>
+
+        {/* Composite score */}
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
+          {(path.compositeScore * 100).toFixed(0)}%
+        </span>
+
+        {/* Expand chevron */}
+        <span style={{
+          fontSize: 10,
+          color: 'var(--text-muted)',
+          flexShrink: 0,
+          transition: 'transform 0.15s',
+          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          display: 'inline-block',
+        }}>
+          ▼
+        </span>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
+          {/* Domain + type pills */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 10,
+              color: path.domainColor,
+              background: `${path.domainColor}18`,
+              padding: '1px 6px',
+              borderRadius: 4,
+            }}>
+              {path.domain}
+            </span>
+            <span style={{
+              fontSize: 10,
+              color: 'var(--text-muted)',
+              background: 'var(--bg-muted)',
+              padding: '1px 6px',
+              borderRadius: 4,
+            }}>
+              {path.type}
+            </span>
+          </div>
+
+          {/* Text snippet from vector search */}
+          {path.text && (
+            <div style={{
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              lineHeight: 1.5,
+              marginBottom: 8,
+              padding: '6px 8px',
+              background: 'rgba(0,0,0,0.02)',
+              borderRadius: 5,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+            }}>
+              {path.text.replace(/\n+/g, ' ').trim()}
+            </div>
+          )}
+
+          {/* Explanation */}
+          <div style={{
+            fontSize: 11,
+            color: 'var(--accent)',
+            lineHeight: 1.5,
+            marginBottom: 8,
+            padding: '5px 8px',
+            background: 'var(--accent-light)',
+            borderRadius: 5,
+          }}>
+            {path.explanation}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={e => { e.stopPropagation(); onSelect(); }}
+              style={{
+                flex: 1,
+                padding: '5px 8px',
+                background: 'var(--accent)',
+                border: 'none',
+                borderRadius: 5,
+                color: '#fff',
+                fontSize: 11,
+                fontFamily: 'var(--font-ui)',
+                cursor: 'pointer',
+              }}
+            >
+              前往
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onSaveTrail(); }}
+              disabled={path.isSaved}
+              style={{
+                flex: 1,
+                padding: '5px 8px',
+                background: path.isSaved ? 'var(--bg-muted)' : 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: 5,
+                color: path.isSaved ? 'var(--text-muted)' : 'var(--text-secondary)',
+                fontSize: 11,
+                fontFamily: 'var(--font-ui)',
+                cursor: path.isSaved ? 'default' : 'pointer',
+              }}
+            >
+              {path.isSaved ? '已保存' : '保存路线'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

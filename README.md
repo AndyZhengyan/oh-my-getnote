@@ -79,22 +79,28 @@ Bush 在 1945 年写道：
 
 ```bash
 # 1. 从 GetNote 导出 HTML → 保存到 source/
-#    GetNote → 设置 → 导出 → HTML
+#    设置 → 导出 → HTML。source/ 目录下应包含 index.html 和 notes/ 目录（或直接放 HTML）
 
-# 2. 安装依赖
-npm install && cd web && npm install && cd ..
+# 2. 安装所有依赖 (根目录执行一次即可)
+npm install
 
 # 3. 配置环境变量
 cp web/.env.local.example web/.env.local
-# 编辑 web/.env.local，填入 OPENAI_API_KEY（支持 OpenAI 或 OpenRouter）
+# 编辑 web/.env.local，填入 OPENAI_API_KEY
 
 # 4. 运行转换器
-npx tsx tools/convert.ts source/ --out .
+npm run convert source/ -- --out .
 
 # 5. 启动图谱
-cd web && npm run dev
+npm run dev
 # → 打开 http://localhost:3000/graph
 ```
+
+### 转换器进阶说明
+`npm run convert <source-dir> [options]`
+- `--out <dir>`: 指定输出目录（默认当前目录）。
+- `--force`: 强制覆盖已存在的 Markdown 正文（默认仅更新元数据，保护手动编辑）。
+
 
 ---
 
