@@ -5,7 +5,7 @@
   "author": "Andy Zhengyan",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AndyZhengyan/memex-for-getnote.git"
+    "url": "https://github.com/AndyZhengyan/oh-my-getnote.git"
   },
   "license": "MIT",
   "keywords": [
@@ -15,9 +15,9 @@
     "memex"
   ],
   "bugs": {
-    "url": "https://github.com/AndyZhengyan/memex-for-getnote/issues"
+    "url": "https://github.com/AndyZhengyan/oh-my-getnote/issues"
   },
-  "homepage": "https://github.com/AndyZhengyan/memex-for-getnote#readme",
+  "homepage": "https://github.com/AndyZhengyan/oh-my-getnote#readme",
   "private": true,
   "scripts": {
     "dev": "next dev",
