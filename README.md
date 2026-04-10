@@ -1,5 +1,3 @@
-<img src="docs/banner.png" alt="Oh My Getnote — 你的个人知识轨迹" width="100%"/>
-
 # Oh My Getnote
 
 > _"人脑不是那样运作的。它靠联想运转。"_ — 范内瓦尔·布什，1945
@@ -54,18 +52,13 @@ notes/*.md         graph-index.json
 
 ---
 
-## 致敬 Memex & LLM Wiki
+## 致敬 Memex
 
 Bush 在 1945 年写道：
 
 > *"人类将要产生的大量知识，将远将超出个人的吸收能力……我们需要一种机器，让知识间形成联想，正如大脑本身所做的那样。"*
 
-**Oh My Getnote** 是这一愿景的现代实现：
-
-- **Memex (1945)**: 沿袭 Vannevar Bush 的构想，让知识通过"足迹"（trail）产生关联，而非死板的分类。
-- **LLM Wiki (2024)**: 受 [Andrej Karpathy 构想](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)的启发，我们致力于构建一种 "persistent, compounding artifact"——知识不再是在每次查询时重复发现，而是在你与 AI 的交互中不断沉淀、互联、并持续增量的。
-
-这不是一个简单的笔记备份工具，而是让知识自己说话——通过 AI 的多跳关联与智能推荐，让那些藏在深处的连接自然浮现。
+**Oh My Getnote** 是这一愿景的开源实现。它不是笔记管理，不是文件夹分类，而是让知识自己说话——沿着联想走，就能发现新的洞见。
 
 ---
 
@@ -79,28 +72,22 @@ Bush 在 1945 年写道：
 
 ```bash
 # 1. 从 GetNote 导出 HTML → 保存到 source/
-#    设置 → 导出 → HTML。source/ 目录下应包含 index.html 和 notes/ 目录（或直接放 HTML）
+#    GetNote → 设置 → 导出 → HTML
 
-# 2. 安装所有依赖 (根目录执行一次即可)
-npm install
+# 2. 安装依赖
+npm install && cd web && npm install && cd ..
 
 # 3. 配置环境变量
 cp web/.env.local.example web/.env.local
-# 编辑 web/.env.local，填入 OPENAI_API_KEY
+# 编辑 web/.env.local，填入 OPENAI_API_KEY（支持 OpenAI 或 OpenRouter）
 
 # 4. 运行转换器
-npm run convert source/ -- --out .
+npx tsx tools/convert.ts source/ --out .
 
 # 5. 启动图谱
-npm run dev
+cd web && npm run dev
 # → 打开 http://localhost:3000/graph
 ```
-
-### 转换器进阶说明
-`npm run convert <source-dir> [options]`
-- `--out <dir>`: 指定输出目录（默认当前目录）。
-- `--force`: 强制覆盖已存在的 Markdown 正文（默认仅更新元数据，保护手动编辑）。
-
 
 ---
 

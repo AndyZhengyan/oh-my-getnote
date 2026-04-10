@@ -13,7 +13,6 @@ export default function GraphPage() {
   const loaded = useGraphStore((s) => s.loaded);
   const graphIndex = useGraphStore((s) => s.graphIndex);
   const setGraphIndex = useGraphStore((s) => s.setGraphIndex);
-  const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const loadTrails = useGraphStore((s) => s.loadTrails);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +75,7 @@ export default function GraphPage() {
         backgroundSize: '24px 24px',
         backgroundPosition: '14px 78px',
         overflow: 'hidden',
+        borderRadius: 'var(--radius-lg)',
       }}>
         <ForceGraph />
       </div>
