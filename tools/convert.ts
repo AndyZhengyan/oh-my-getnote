@@ -32,8 +32,7 @@ function parseHtmlFile(filePath: string): Note | null {
     title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
   }
   const tags: string[] = [];
-  const tagMatches = content.match(/<div class=
-ote-tags>([\s\S]*?)<\/div>/i);
+  const tagMatches = content.match(/<div class="note-tags">([\s\S]*?)<\/div>/i);
   if (tagMatches) {
     const tagContent = tagMatches[1];
     const individualTags = tagContent.match(/#([^\s<#]+)/g);
@@ -75,6 +74,7 @@ function copyImages(
   const imgMatches = [...html.matchAll(/src=["']([^"']+)["']/gi)];
   for (const m of imgMatches) {
     const src = m[1];
+    // 只复制本地文件（相对路径），跳过 http URL
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(src) && !src.startsWith('http')) {
       const srcPath = path.join(sourceNotesDir, src);
       if (fs.existsSync(srcPath)) {
@@ -119,7 +119,7 @@ async function main() {
   const htmlFiles = fs.readdirSync(notesDir).filter(f => f.endsWith('.html'));
 
   if (htmlFiles.length === 0) {
-    console.error('错误：在 ' + notesDir + ' 中未找到 HTML 文件。');
+    console.error(`错误：在 ${notesDir} 中未找到 HTML 文件。`);
     process.exit(1);
   }
 
@@ -128,14 +128,14 @@ async function main() {
     const note = parseHtmlFile(path.join(notesDir, file));
     if (note) notes.push(note);
   }
-  console.log('   解析完成：' + notes.length + ' 篇笔记');
+  console.log(`   解析完成：${notes.length} 篇笔记`);
 
   // 2. HTML→Markdown 转换
   console.log('📝 转换为 Markdown...');
-  const metadataMap = new Map();
+  const metadataMap = new Map<string, NoteMetadata>();
 
   for (const note of notes) {
-    const htmlPath = path.join(notesDir, note.id + '.html');
+    const htmlPath = path.join(notesDir, `${note.id}.html`);
     const html = fs.readFileSync(htmlPath, 'utf-8');
 
     // 复制图片
@@ -152,15 +152,17 @@ async function main() {
     metadataMap.set(note.id, result.frontmatter);
 
     // 写入 Markdown
+    //   默认模式：跳过已存在的文件（保护用户对 body 的手动编辑，只更新 frontmatter）
+    //   --force 模式：强制覆盖 body（converter 本身有 bug 修复时需要）
     const typeDir = path.join(notesOutDir, result.frontmatter.type);
     fs.mkdirSync(typeDir, { recursive: true });
-    const mdPath = path.join(typeDir, note.id + '.md');
+    const mdPath = path.join(typeDir, `${note.id}.md`);
     if (!fs.existsSync(mdPath) || force) {
       const mdContent = buildMarkdownString(result);
       fs.writeFileSync(mdPath, '\uFEFF' + mdContent, 'utf8');
     }
   }
-  console.log('   转换完成：' + metadataMap.size + ' 篇 Markdown');
+  console.log(`   转换完成：${metadataMap.size} 篇 Markdown`);
 
   // 3. 语义关联计算（跳过单个笔记或用户禁用）
   if (notes.length > 1) {
@@ -172,13 +174,13 @@ async function main() {
         meta.connections = conns.map(c => ({
           noteId: c.noteId,
           score: c.score,
-          type: 'semantic',
+          type: 'semantic' as const,
         }));
       }
     }
-    console.log('   关联计算完成');
+    console.log(`   关联计算完成`);
 
-    // 4. PCA 降维
+    // 4. PCA 降维（复用 buildNoteConnections 已计算的 embeddings）
     console.log('📐 PCA 降维...');
     const ids = notes.map(n => n.id);
     const vectors = ids.map(id => embeddings.get(id) || new Array(768).fill(0));
@@ -195,10 +197,11 @@ async function main() {
     // 重新生成 Markdown（写入关联数据）
     console.log('📝 更新 Markdown 关联数据...');
     for (const [noteId, meta] of metadataMap) {
-      const mdPath = path.join(notesOutDir, meta.type, noteId + '.md');
+      const mdPath = path.join(notesOutDir, meta.type, `${noteId}.md`);
       if (fs.existsSync(mdPath)) {
+        // 读取已有文件内容替换 frontmatter 部分
         const existing = fs.readFileSync(mdPath, 'utf8');
-        const bodyStart = existing.indexOf('\n---\n', 4);
+        const bodyStart = existing.indexOf('\n---\n', 4); // 第二个 --- 之后是 body
         if (bodyStart >= 0) {
           const body = existing.slice(bodyStart + 5).trim();
           const newMd = buildMarkdownString({ frontmatter: meta, body, imageRefs: [] });
@@ -210,10 +213,10 @@ async function main() {
 
   // 5. 生成 graph-index.json（幂等）
   const indexPath = path.join(outDir, 'graph-index.json');
-  console.log('🗂  生成 graph-index.json...');
-  const entries = Array.from(metadataMap.entries()).map(([id, meta]) => ({
+  console.log('🗂️  生成 graph-index.json...');
+  const entries: NoteIndexEntry[] = Array.from(metadataMap.entries()).map(([id, meta]) => ({
     id,
-    path: 'notes/' + meta.type + '/' + id + '.md',
+    path: `notes/${meta.type}/${id}.md`,
     domain: meta.domain,
     type: meta.type,
     title: meta.title,
@@ -228,7 +231,7 @@ async function main() {
   for (const note of notes) {
     const exists = await noteExists(note.id);
     if (exists) continue;
-    const text = (note.title + ' ' + (note.contentSnippet || '')).trim();
+    const text = `${note.title} ${note.contentSnippet || ''}`.trim();
     const vector = await embedText(text);
     await storeNote({
       id: note.id,
@@ -239,16 +242,16 @@ async function main() {
     });
     stored++;
   }
-  console.log('   LanceDB 新写入：' + stored + ' 篇');
+  console.log(`   LanceDB 新写入：${stored} 篇`);
 
-  console.log('✅ 完成！');
-  console.log('   笔记：' + graphIndex.stats.total_notes + ' 篇');
-  console.log('   关联：' + graphIndex.stats.total_connections + ' 条');
-  console.log('   领域：' + graphIndex.domains.join(', '));
+  console.log(`✅ 完成！`);
+  console.log(`   笔记：${graphIndex.stats.total_notes} 篇`);
+  console.log(`   关联：${graphIndex.stats.total_connections} 条`);
+  console.log(`   领域：${graphIndex.domains.join(', ')}`);
 }
 
-// Guard: only run main() when executed directly as CLI
-if (import.meta.url === 'file://' + process.argv[1].replace(/\/g, '/')) {
+// Guard: only run main() when executed directly as CLI, not imported by tests/vitest
+if (import.meta.url === `file://${process.argv[1]}`.replace(/\\/g, '/')) {
   main().catch(err => {
     console.error('转换失败:', err);
     process.exit(1);
