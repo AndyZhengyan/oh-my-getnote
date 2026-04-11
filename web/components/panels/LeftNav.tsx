@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useGraphStore, type TrailStep } from '@/stores/graphStore';
-import { Bookmark, Trash2, X, ChevronUp } from 'lucide-react';
+import { Bookmark, Trash2, ChevronUp } from 'lucide-react';
 import { DOMAIN_COLORS } from '@/lib/constants';
 
 
@@ -145,19 +145,6 @@ export default function LeftNav() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
             >
               <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: trailCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
-            </button>
-            {/* × 收起 section */}
-            <button
-              onClick={() => setTrailCollapsed(true)}
-              title="收起"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-            >
-              <X size={12} />
             </button>
           </div>
 
