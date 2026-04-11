@@ -32,6 +32,9 @@ export default function LeftNav() {
   } = useGraphStore();
 
   const [trailCollapsed, setTrailCollapsed] = useState(false);
+  const [tagsCollapsed, setTagsCollapsed] = useState(false);
+  const [typeCollapsed, setTypeCollapsed] = useState(false);
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
 
   if (!graphIndex) return null;
 
@@ -180,69 +183,102 @@ export default function LeftNav() {
 
           {/* Domain list */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
-            <div style={{ padding: '0 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-              知识领域
+            {/* Tags / 知识领域 section header */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
+                Tags
+              </span>
+              <button
+                onClick={() => setTagsCollapsed(c => !c)}
+                title={tagsCollapsed ? '展开' : '收起'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+              >
+                <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: tagsCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+              </button>
             </div>
 
-            <NavItem
-              active={domainFilter === '' && typeFilter === ''}
-              onClick={() => { setDomainFilter(''); setTypeFilter(''); }}
-              color="#9CA3AF"
-              count={graphIndex.stats.total_notes}
-              label="全部笔记"
-            />
-
-            {graphIndex.domains
-              .filter(d => d !== '其他')
-              .sort((a, b) => (graphIndex.stats.by_domain[b] ?? 0) - (graphIndex.stats.by_domain[a] ?? 0))
-              .map(domain => (
+            {!tagsCollapsed && (
+              <>
                 <NavItem
-                  key={domain}
-                  active={domainFilter === domain}
-                  onClick={() => setDomainFilter(domainFilter === domain ? '' : domain)}
-                  color={DOMAIN_COLORS[domain] ?? '#9CA3AF'}
-                  count={graphIndex.stats.by_domain[domain] ?? 0}
-                  label={domain}
+                  active={domainFilter === '' && typeFilter === ''}
+                  onClick={() => { setDomainFilter(''); setTypeFilter(''); }}
+                  color="#9CA3AF"
+                  count={graphIndex.stats.total_notes}
+                  label="全部笔记"
                 />
-              ))}
 
-            {graphIndex.domains.includes('其他') && (
-              <NavItem
-                active={domainFilter === '其他'}
-                onClick={() => setDomainFilter(domainFilter === '其他' ? '' : '其他')}
-                color={DOMAIN_COLORS['其他'] ?? '#9CA3AF'}
-                count={graphIndex.stats.by_domain['其他'] ?? 0}
-                label="其他"
-              />
+                {graphIndex.domains
+                  .filter(d => d !== '其他')
+                  .sort((a, b) => (graphIndex.stats.by_domain[b] ?? 0) - (graphIndex.stats.by_domain[a] ?? 0))
+                  .map(domain => (
+                    <NavItem
+                      key={domain}
+                      active={domainFilter === domain}
+                      onClick={() => setDomainFilter(domainFilter === domain ? '' : domain)}
+                      color={DOMAIN_COLORS[domain] ?? '#9CA3AF'}
+                      count={graphIndex.stats.by_domain[domain] ?? 0}
+                      label={domain}
+                    />
+                  ))}
+
+                {graphIndex.domains.includes('其他') && (
+                  <NavItem
+                    active={domainFilter === '其他'}
+                    onClick={() => setDomainFilter(domainFilter === '其他' ? '' : '其他')}
+                    color={DOMAIN_COLORS['其他'] ?? '#9CA3AF'}
+                    count={graphIndex.stats.by_domain['其他'] ?? 0}
+                    label="其他"
+                  />
+                )}
+              </>
             )}
 
             {types.length > 0 && (
               <>
-                <div style={{ padding: '12px 16px 6px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                  笔记类型
+                {/* 笔记类型 section header */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
+                    笔记类型
+                  </span>
+                  <button
+                    onClick={() => setTypeCollapsed(c => !c)}
+                    title={typeCollapsed ? '展开' : '收起'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                  >
+                    <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: typeCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+                  </button>
                 </div>
-                {types
-                  .filter(t => t !== '其他')
-                  .sort((a, b) => (graphIndex.stats.by_type[b] ?? 0) - (graphIndex.stats.by_type[a] ?? 0))
-                  .map(type => (
-                    <NavItem
-                      key={type}
-                      active={typeFilter === type}
-                      onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
-                      color="var(--text-secondary)"
-                      count={graphIndex.stats.by_type[type]}
-                      label={type}
-                    />
-                  ))}
 
-                {types.includes('其他') && (
-                  <NavItem
-                    active={typeFilter === '其他'}
-                    onClick={() => setTypeFilter(typeFilter === '其他' ? '' : '其他')}
-                    color="var(--text-secondary)"
-                    count={graphIndex.stats.by_type['其他']}
-                    label="其他"
-                  />
+                {!typeCollapsed && (
+                  <>
+                    {types
+                      .filter(t => t !== '其他')
+                      .sort((a, b) => (graphIndex.stats.by_type[b] ?? 0) - (graphIndex.stats.by_type[a] ?? 0))
+                      .map(type => (
+                        <NavItem
+                          key={type}
+                          active={typeFilter === type}
+                          onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
+                          color="var(--text-secondary)"
+                          count={graphIndex.stats.by_type[type]}
+                          label={type}
+                        />
+                      ))}
+
+                    {types.includes('其他') && (
+                      <NavItem
+                        active={typeFilter === '其他'}
+                        onClick={() => setTypeFilter(typeFilter === '其他' ? '' : '其他')}
+                        color="var(--text-secondary)"
+                        count={graphIndex.stats.by_type['其他']}
+                        label="其他"
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -332,40 +368,55 @@ export default function LeftNav() {
             </div>
 
             {/* 历史轨迹 section */}
-            <div style={{ flexShrink: 0 }}>
-              <div style={{ padding: '4px 16px 2px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                历史轨迹
+            <div style={{ borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+              {/* 历史轨迹 section header */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 4px 16px', flexShrink: 0, gap: 6 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
+                  历史轨迹
+                </span>
+                <button
+                  onClick={() => setHistoryCollapsed(c => !c)}
+                  title={historyCollapsed ? '展开' : '收起'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                >
+                  <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: historyCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+                </button>
               </div>
-              <div style={{ padding: '2px 0 6px' }}>
-                {savedTrails.length === 0 && (
-                  <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
-                    暂无
-                  </div>
-                )}
-                {savedTrails.slice(0, 5).map(trail => (
-                  <div key={trail.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px 16px',
-                    fontSize: 11,
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-ui)',
-                  }}
-                  onClick={() => {
-                    const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
-                    useGraphStore.setState({ browsePath: ids });
-                    if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
-                  }}
-                  >
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>
-                    <button onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+
+              {!historyCollapsed && (
+                <div style={{ padding: '2px 0 6px' }}>
+                  {savedTrails.length === 0 && (
+                    <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
+                      暂无
+                    </div>
+                  )}
+                  {savedTrails.slice(0, 5).map(trail => (
+                    <div key={trail.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '4px 16px',
+                      fontSize: 11,
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-ui)',
+                    }}
+                    onClick={() => {
+                      const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
+                      useGraphStore.setState({ browsePath: ids });
+                      if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
+                    }}
+                    >
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>
+                      <button onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>
