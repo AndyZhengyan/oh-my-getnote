@@ -29,32 +29,9 @@ export default function LeftNav() {
     recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
-  const [searching, setSearching] = useState(false);
+
   const [trailCollapsed, setTrailCollapsed] = useState(false);
   const [recommendCollapsed, setRecommendCollapsed] = useState(false);
-
-  const handleVectorSearch = async () => {
-    if (browsePath.length === 0) return;
-    setSearching(true);
-    try {
-      const selectedNotes = browsePath.map(id => graphIndex?.index[id]).filter(Boolean);
-      const texts = selectedNotes.map(n => (n as { title: string }).title);
-      const res = await fetch('/api/vector/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
-      });
-      if (!res.ok) { setRecommendedPaths([]); return; }
-      const data = await res.json();
-      const rawResults: VectorResult[] = data.results ?? [];
-      const paths = synthesizeRecommendedPaths(rawResults, browsePath, graphIndex?.index ?? null);
-      setRecommendedPaths(paths.map(p => ({ ...p, domainColor: DOMAIN_COLORS[p.domain] ?? '#9CA3AF' })));
-    } catch {
-      setRecommendedPaths([]);
-    } finally {
-      setSearching(false);
-    }
-  };
 
   if (!graphIndex) return null;
 
@@ -234,34 +211,6 @@ export default function LeftNav() {
                   </div>
                 );
               })}
-              {/* 多跳搜索 */}
-              {browsePath.length > 0 && (
-                <div style={{ padding: '4px 16px 6px' }}>
-                  <button
-                    onClick={handleVectorSearch}
-                    disabled={searching}
-                    style={{
-                      width: '100%',
-                      padding: '5px 8px',
-                      background: searching ? 'var(--bg-elevated)' : 'var(--accent)',
-                      border: '1px solid var(--accent)',
-                      borderRadius: 'var(--radius-md)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontFamily: 'var(--font-ui)',
-                      cursor: searching ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      opacity: searching ? 0.6 : 1,
-                    }}
-                  >
-                    <Sparkles size={11} />
-                    {searching ? '搜索中…' : '多跳搜索'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -306,7 +255,7 @@ export default function LeftNav() {
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 8px' }}>
               {recommendedPaths.length === 0 && (
                 <div style={{ padding: '4px 4px', fontSize: 11, color: 'var(--text-muted)' }}>
-                  {browsePath.length === 0 ? '追踪节点后可用' : '点击多跳搜索发现路线'}
+                  暂无推荐
                 </div>
               )}
               {recommendedPaths.map((path, rank) => (
