@@ -252,9 +252,9 @@ export default function RightPanel() {
             return (
               <>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6, fontWeight: 600 }}>
-                  {browsePath?.length ? '✨ 链路推荐' : '相似笔记'} ({recommendations.length})
+                  推荐笔记 ({recommendations.length})
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
                   {recommendations.map(rec => (
                     <div key={rec.noteId} onClick={() => selectNode(rec.noteId)} style={{
                       padding: '7px 10px',

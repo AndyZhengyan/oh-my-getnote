@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useGraphStore, type TrailStep } from '@/stores/graphStore';
-import { Bookmark, Trash2, X, ChevronUp } from 'lucide-react';
+import { Bookmark, Trash2 } from 'lucide-react';
 import { DOMAIN_COLORS } from '@/lib/constants';
 
 
@@ -29,7 +29,6 @@ export default function LeftNav() {
   } = useGraphStore();
 
 
-  const [trailCollapsed, setTrailCollapsed] = useState(false);
 
   if (!graphIndex) return null;
 
@@ -126,7 +125,7 @@ export default function LeftNav() {
       <div style={{ borderTop: '1px solid var(--border)', flex: '0 0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 280, flexShrink: 0 }}>
 
         {/* 探索路径 section — flex: 3 */}
-        <div style={{ flex: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 210, minHeight: 0, borderBottom: '1px solid var(--border)' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
             <Bookmark size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
@@ -135,40 +134,21 @@ export default function LeftNav() {
             </span>
             {/* 收起按钮 ▲ */}
             <button
-              onClick={() => setTrailCollapsed(c => !c)}
-              title={trailCollapsed ? '展开' : '收起'}
-              style={{
+                            style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
             >
-              <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: trailCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
-            </button>
-            {/* × 收起 section */}
-            <button
-              onClick={() => setTrailCollapsed(true)}
-              title="收起"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-            >
-              <X size={12} />
             </button>
           </div>
 
           {/* Content — independent scroll */}
-          {!trailCollapsed && (
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              {browsePath.length === 0 && (
                 <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
                   点击图谱节点开始追踪
                 </div>
-              )}
               {browsePath.map((nodeId, i) => {
                 const entry = graphIndex?.index[nodeId];
                 const isLast = i === browsePath.length - 1;
@@ -210,9 +190,7 @@ export default function LeftNav() {
                 );
               })}
             </div>
-          )}
         </div>
-
 
         {/* 历史轨迹 section — fixed */}
         <div style={{ flexShrink: 0 }}>
