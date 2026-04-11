@@ -145,11 +145,28 @@ export default function LeftNav() {
       {/* Full content — only visible when expanded */}
       {leftNavOpen && (
         <>
+          {/* Logo row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 16px',
+            borderBottom: '1px solid var(--border)',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>📚</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-ui)' }}>
+              Oh My Getnote
+            </span>
+          </div>
+
           {/* Search trigger button */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '12px 16px', borderBottom: '1px solid var(--border)',
+            padding: '8px 16px',
+            borderBottom: '1px solid var(--border)',
             cursor: 'pointer',
+            flexShrink: 0,
           }}
             onClick={() => setSearchModalOpen(true)}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
@@ -177,7 +194,7 @@ export default function LeftNav() {
 
             {graphIndex.domains
               .filter(d => d !== '其他')
-              .sort(compareAlphaFirst)
+              .sort((a, b) => (graphIndex.stats.by_domain[b] ?? 0) - (graphIndex.stats.by_domain[a] ?? 0))
               .map(domain => (
                 <NavItem
                   key={domain}
@@ -206,7 +223,7 @@ export default function LeftNav() {
                 </div>
                 {types
                   .filter(t => t !== '其他')
-                  .sort(compareAlphaFirst)
+                  .sort((a, b) => (graphIndex.stats.by_type[b] ?? 0) - (graphIndex.stats.by_type[a] ?? 0))
                   .map(type => (
                     <NavItem
                       key={type}
@@ -232,10 +249,18 @@ export default function LeftNav() {
           </div>
 
           {/* Bottom: 探索路径 + 历史轨迹 */}
-          <div style={{ borderTop: '1px solid var(--border)', flex: '0 0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 280, flexShrink: 0 }}>
+          <div style={{
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
 
             {/* 探索路径 section */}
-            <div style={{ flex: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, borderBottom: '1px solid var(--border)' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
                 <Bookmark size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--accent)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
