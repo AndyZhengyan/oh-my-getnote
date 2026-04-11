@@ -121,6 +121,8 @@ export default function ForceGraph() {
     setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
     browsePath,
+    clearBrowsePath,
+    clearRecommendedPaths,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -129,6 +131,7 @@ export default function ForceGraph() {
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const levelMap = useMemo(
     () => buildLevelMap(selectedNodeId, focusedNodeId, focusedNeighborIds, browsePath, graphIndex),
@@ -307,10 +310,14 @@ export default function ForceGraph() {
   const handleBackgroundClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'CANVAS') {
-      selectNode(null);
-      setFocusMode(false);
+      if (browsePath.length > 0) {
+        setClearConfirmOpen(true);
+      } else {
+        selectNode(null);
+        setFocusMode(false);
+      }
     }
-  }, [selectNode, setFocusMode]);
+  }, [browsePath.length, selectNode, setFocusMode]);
 
   const handleBackgroundRightClick = useCallback(() => {
     setFocusMode(false);
@@ -495,6 +502,98 @@ export default function ForceGraph() {
         cooldownTicks={60}
         backgroundColor="#F8F9FB"
       />
+
+      {/* Clear trail confirmation dialog */}
+      {clearConfirmOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setClearConfirmOpen(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0,0,0,0.25)',
+              zIndex: 400,
+            }}
+          />
+          {/* Dialog */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '24px 28px',
+              zIndex: 410,
+              minWidth: 280,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 20,
+            }}
+          >
+            <p style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              margin: 0,
+              textAlign: 'center',
+              lineHeight: 1.4,
+            }}>
+              清空当前探索轨迹？
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => setClearConfirmOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--bg-muted)'; }}
+                onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  clearBrowsePath();
+                  clearRecommendedPaths();
+                  setClearConfirmOpen(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { (e.target as HTMLElement).style.background = '#6D28D9'; }}
+                onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--accent)'; }}
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Hover tooltip */}
       {tooltip && (
