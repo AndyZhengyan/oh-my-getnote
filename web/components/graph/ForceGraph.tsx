@@ -123,6 +123,7 @@ export default function ForceGraph() {
     browsePath,
     clearBrowsePath,
     clearRecommendedPaths,
+    rightPanelOpen,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +199,15 @@ export default function ForceGraph() {
     if (!fgRef.current || nodes.length === 0) return;
     // No cleanup needed — alpha(0) is set by filter effect or this settles naturally
   }, [nodes.length]);
+
+  // Pan to the selected node when it changes (e.g. from clicking a recommended path card)
+  useEffect(() => {
+    if (!selectedNodeId || !fgRef.current) return;
+    const nodePos = (globalThis as any)._nodePosCache?.get(selectedNodeId);
+    if (nodePos && nodePos.x != null && nodePos.y != null) {
+      fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
+    }
+  }, [selectedNodeId, rightPanelOpen]);
 
   useEffect(() => {
     if (!containerRef.current) return;

@@ -25,7 +25,7 @@ export default function LeftNav() {
     clearBrowsePath, removeFromBrowsePath,
     savedTrails,
     deleteTrail, saveTrail,
-    selectNode,
+    selectNode, setRightPanelOpen,
     recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
@@ -308,7 +308,7 @@ export default function LeftNav() {
                         key={path.noteId}
                         path={path}
                         rank={rank + 1}
-                        onSelect={() => selectNode(path.noteId)}
+                        onSelect={() => { setRightPanelOpen(true); selectNode(path.noteId); }}
                         onSaveTrail={() => {
                           const trailSteps: TrailStep[] = [
                             ...browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
