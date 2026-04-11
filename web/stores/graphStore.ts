@@ -103,6 +103,8 @@ interface GraphState {
   // Panel visibility
   multiHopPanelOpen: boolean;
   setMultiHopPanelOpen: (open: boolean) => void;
+  rightPanelOpen: boolean;
+  setRightPanelOpen: (open: boolean) => void;
   // Recommended paths for multi-hop search
   recommendedPaths: RecommendedPath[];
   setRecommendedPaths: (paths: RecommendedPath[]) => void;
@@ -132,6 +134,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
   multiHopPanelOpen: false,
   recommendedPaths: [],
+  rightPanelOpen: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -139,17 +142,22 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
+    // Track previous selectedNodeId to detect actual changes
+    const prevId = state.selectedNodeId;
+    let nextPath: string[];
     if (id && state.browsePath.includes(id)) {
       const idx = state.browsePath.indexOf(id);
       if (idx === 0) {
-        // Clicking the first node again returns to empty path
-        set({ selectedNodeId: id, browsePath: [] });
+        nextPath = [];
       } else {
-        set({ selectedNodeId: id, browsePath: state.browsePath.slice(0, idx + 1) });
+        nextPath = state.browsePath.slice(0, idx + 1);
       }
     } else {
-      set({ selectedNodeId: id, browsePath: id ? [...state.browsePath, id] : [] });
+      nextPath = id ? [...state.browsePath, id] : [];
     }
+    // Auto-open right panel when a node is newly selected
+    const panelOpen = id !== null && id !== prevId ? true : state.rightPanelOpen;
+    set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: panelOpen });
   },
   focusNode: (id) => set(state => ({
     focusedNodeId: id,
@@ -230,6 +238,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   setMultiHopPanelOpen: (open) => set({ multiHopPanelOpen: open }),
+  setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
 
   setRecommendedPaths: (paths) => set({ recommendedPaths: paths }),
   clearRecommendedPaths: () => set({ recommendedPaths: [] }),

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useGraphStore, type RecommendedPath, type TrailStep } from '@/stores/graphStore';
-import { Bookmark, Trash2, X, Sparkles } from 'lucide-react';
+import { Bookmark, Trash2, X, ChevronUp, Sparkles } from 'lucide-react';
 import { DOMAIN_COLORS } from '@/lib/constants';
 import { synthesizeRecommendedPaths, type VectorResult } from '@/lib/recommend';
 
@@ -21,15 +21,17 @@ export default function LeftNav() {
     graphIndex,
     domainFilter, setDomainFilter,
     typeFilter, setTypeFilter,
-    browsePath, browsePathShow, setBrowsePathShow,
-    clearBrowsePath, removeFromBrowsePath,
+    browsePath,
+    removeFromBrowsePath,
     savedTrails,
     deleteTrail, saveTrail,
-    selectNode,
+    selectNode, setRightPanelOpen,
     recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
   const [searching, setSearching] = useState(false);
+  const [trailCollapsed, setTrailCollapsed] = useState(false);
+  const [recommendCollapsed, setRecommendCollapsed] = useState(false);
 
   const handleVectorSearch = async () => {
     if (browsePath.length === 0) return;
@@ -61,6 +63,7 @@ export default function LeftNav() {
   return (
     <aside style={{
       width: 280,
+      maxWidth: 280,
       height: 'calc(100vh - 14px)',
       position: 'fixed',
       top: 78,
@@ -69,7 +72,7 @@ export default function LeftNav() {
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius-lg)',
       boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-      overflow: 'hidden auto',
+      overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 50,
@@ -144,222 +147,224 @@ export default function LeftNav() {
         )}
       </div>
 
-      {/* Trail section — browsePath auto-trace */}
-      <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
-        <button
-          onClick={() => setBrowsePathShow(!browsePathShow)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 16px',
-            background: 'none',
-            border: 'none',
-            color: browsePathShow ? 'var(--accent)' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-            textAlign: 'left',
-            transition: 'color 0.12s',
-          }}
-        >
-          <Bookmark size={13} />
-          探索路径 ({browsePath.length})
-          {browsePath.length > 0 && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={e => { e.stopPropagation(); clearBrowsePath(); }}
-              title="清空轨迹"
+      {/* Bottom: 3:1 flex sections + 历史轨迹 */}
+      <div style={{ borderTop: '1px solid var(--border)', flex: '0 0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 280, flexShrink: 0 }}>
+
+        {/* 探索路径 section — flex: 3 */}
+        <div style={{ flex: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, borderBottom: '1px solid var(--border)' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+            <Bookmark size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--accent)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              探索路径 ({browsePath.length})
+            </span>
+            {/* 收起按钮 ▲ */}
+            <button
+              onClick={() => setTrailCollapsed(c => !c)}
+              title={trailCollapsed ? '展开' : '收起'}
               style={{
-                marginLeft: 'auto',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                padding: 2,
-                display: 'flex',
-                borderRadius: 3,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+            >
+              <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: trailCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+            </button>
+            {/* × 收起 section */}
+            <button
+              onClick={() => setTrailCollapsed(true)}
+              title="收起"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
             >
               <X size={12} />
-            </span>
-          )}
-        </button>
+            </button>
+          </div>
 
-        {browsePathShow && (
-          <div>
-            {browsePath.length === 0 && (
-              <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
-                点击图谱节点开始追踪
-              </div>
-            )}
-            {browsePath.map((nodeId, i) => {
-              const entry = graphIndex?.index[nodeId];
-              const isLast = i === browsePath.length - 1;
-              return (
-                <div key={nodeId} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '6px 16px 6px 32px',
-                  fontSize: 12,
-                  color: isLast ? 'var(--accent)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  borderLeft: `2px solid ${isLast ? 'var(--accent)' : 'transparent'}`,
-                  background: isLast ? 'var(--accent-light)' : 'transparent',
-                  fontFamily: 'var(--font-ui)',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-                onClick={() => useGraphStore.getState().selectNode(nodeId)}
-                onMouseEnter={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
-                onMouseLeave={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
-                >
-                  <span style={{ color: 'var(--text-muted)', marginRight: 6, flexShrink: 0 }}>{i + 1}.</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {entry?.title ?? nodeId}
-                  </span>
-                  <button
-                    title="移除此步及后续"
-                    onClick={e => { e.stopPropagation(); removeFromBrowsePath(nodeId); }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      padding: 2,
-                      display: 'flex',
-                      borderRadius: 3,
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
+          {/* Content — independent scroll */}
+          {!trailCollapsed && (
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              {browsePath.length === 0 && (
+                <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                  点击图谱节点开始追踪
                 </div>
-              );
-            })}
-            {browsePath.length > 0 && (
-              <button
-                onClick={() => {
-                  const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-                  saveTrail(`探索 ${date}`);
-                }}
-                style={{
-                  width: 'calc(100% - 32px)',
-                  margin: '4px 16px 0',
-                  padding: '5px 8px',
-                  background: 'var(--accent-light)',
-                  border: '1px solid var(--accent-mid)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--accent)',
-                  fontSize: 12,
-                  fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                }}
-              >
-                保存轨迹
-              </button>
-            )}
-
-            {/* 多跳搜索 */}
-            {browsePath.length > 0 && (
-              <>
-                <button
-                  onClick={handleVectorSearch}
-                  disabled={searching}
-                  style={{
-                    width: 'calc(100% - 32px)',
-                    margin: '4px 16px 0',
-                    padding: '5px 8px',
-                    background: searching ? 'var(--bg-elevated)' : 'var(--accent)',
-                    border: '1px solid var(--accent)',
-                    borderRadius: 'var(--radius-md)',
-                    color: '#fff',
-                    fontSize: 12,
-                    fontFamily: 'var(--font-ui)',
-                    cursor: searching ? 'not-allowed' : 'pointer',
+              )}
+              {browsePath.map((nodeId, i) => {
+                const entry = graphIndex?.index[nodeId];
+                const isLast = i === browsePath.length - 1;
+                return (
+                  <div key={nodeId} style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    opacity: searching ? 0.6 : 1,
+                    padding: '5px 12px 5px 28px',
+                    fontSize: 12,
+                    color: isLast ? 'var(--accent)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    borderLeft: `2px solid ${isLast ? 'var(--accent)' : 'transparent'}`,
+                    background: isLast ? 'var(--accent-light)' : 'transparent',
+                    fontFamily: 'var(--font-ui)',
+                    transition: 'background 0.15s, color 0.15s',
                   }}
-                >
-                  <Sparkles size={12} />
-                  {searching ? '搜索中…' : '多跳搜索'}
-                </button>
-
-                {recommendedPaths.length > 0 && (
-                  <div style={{ marginTop: 8, padding: '0 16px 4px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      推荐链路
-                    </div>
-                    {recommendedPaths.map((path, rank) => (
-                      <RecommendedPathCard
-                        key={path.noteId}
-                        path={path}
-                        rank={rank + 1}
-                        onSelect={() => selectNode(path.noteId)}
-                        onSaveTrail={() => {
-                          const trailSteps: TrailStep[] = [
-                            ...browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
-                            { noteId: path.noteId, timestamp: new Date().toISOString() },
-                          ];
-                          const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-                          saveTrail(`推荐路线 ${date}`, trailSteps);
-                          markPathSaved(path.noteId);
-                        }}
-                      />
-                    ))}
+                  onClick={() => useGraphStore.getState().selectNode(nodeId)}
+                  onMouseEnter={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
+                  onMouseLeave={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', marginRight: 5, flexShrink: 0 }}>{i + 1}.</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {entry?.title ?? nodeId}
+                    </span>
+                    <button
+                      title="移除此步及后续"
+                      onClick={e => { e.stopPropagation(); removeFromBrowsePath(nodeId); }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                    >
+                      <Trash2 size={11} />
+                    </button>
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* 历史轨迹 */}
-        <div style={{ padding: '4px 16px 0', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-          历史轨迹
-        </div>
-        <div style={{ padding: '4px 0' }}>
-          {savedTrails.length === 0 && (
-            <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
-              暂无
+                );
+              })}
+              {/* 多跳搜索 */}
+              {browsePath.length > 0 && (
+                <div style={{ padding: '4px 16px 6px' }}>
+                  <button
+                    onClick={handleVectorSearch}
+                    disabled={searching}
+                    style={{
+                      width: '100%',
+                      padding: '5px 8px',
+                      background: searching ? 'var(--bg-elevated)' : 'var(--accent)',
+                      border: '1px solid var(--accent)',
+                      borderRadius: 'var(--radius-md)',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontFamily: 'var(--font-ui)',
+                      cursor: searching ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      opacity: searching ? 0.6 : 1,
+                    }}
+                  >
+                    <Sparkles size={11} />
+                    {searching ? '搜索中…' : '多跳搜索'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
-          {savedTrails.slice(0, 5).map(trail => (
-            <div key={trail.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '4px 16px',
-              fontSize: 11,
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-            }}
-            onClick={() => {
-              const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
-              useGraphStore.setState({ browsePath: ids });
-              if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
-            }}
+        </div>
+
+        {/* 推荐链路 section — flex: 1 */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              推荐链路 ({recommendedPaths.length})
+            </span>
+            {/* 收起按钮 ▲ */}
+            <button
+              onClick={() => setRecommendCollapsed(c => !c)}
+              title={recommendCollapsed ? '展开' : '收起'}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
             >
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>
-              <button onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
-                <Trash2 size={10} />
-              </button>
+              <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: recommendCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+            </button>
+            {/* × 收起 section */}
+            <button
+              onClick={() => setRecommendCollapsed(true)}
+              title="收起"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+
+          {/* Content — independent scroll */}
+          {!recommendCollapsed && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 8px' }}>
+              {recommendedPaths.length === 0 && (
+                <div style={{ padding: '4px 4px', fontSize: 11, color: 'var(--text-muted)' }}>
+                  {browsePath.length === 0 ? '追踪节点后可用' : '点击多跳搜索发现路线'}
+                </div>
+              )}
+              {recommendedPaths.map((path, rank) => (
+                <RecommendedPathCard
+                  key={path.noteId}
+                  path={path}
+                  rank={rank + 1}
+                  onSelect={() => { setRightPanelOpen(true); selectNode(path.noteId); }}
+                  onSaveTrail={() => {
+                    const trailSteps: TrailStep[] = [
+                      ...browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
+                      { noteId: path.noteId, timestamp: new Date().toISOString() },
+                    ];
+                    const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+                    saveTrail(`推荐路线 ${date}`, trailSteps);
+                    markPathSaved(path.noteId);
+                  }}
+                />
+              ))}
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* 历史轨迹 section — fixed */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ padding: '4px 16px 2px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+            历史轨迹
+          </div>
+          <div style={{ padding: '2px 0 6px' }}>
+            {savedTrails.length === 0 && (
+              <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
+                暂无
+              </div>
+            )}
+            {savedTrails.slice(0, 5).map(trail => (
+              <div key={trail.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '4px 16px',
+                fontSize: 11,
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-ui)',
+              }}
+              onClick={() => {
+                const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
+                useGraphStore.setState({ browsePath: ids });
+                if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
+              }}
+              >
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>
+                <button onClick={e => { e.stopPropagation(); deleteTrail(trail.id); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+                  <Trash2 size={10} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </aside>
