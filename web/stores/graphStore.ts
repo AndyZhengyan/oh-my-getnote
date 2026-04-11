@@ -105,6 +105,10 @@ interface GraphState {
   setMultiHopPanelOpen: (open: boolean) => void;
   rightPanelOpen: boolean;
   setRightPanelOpen: (open: boolean) => void;
+  leftNavOpen: boolean;
+  setLeftNavOpen: (open: boolean) => void;
+  searchModalOpen: boolean;
+  setSearchModalOpen: (open: boolean) => void;
   // Recommended paths for multi-hop search
   recommendedPaths: RecommendedPath[];
   setRecommendedPaths: (paths: RecommendedPath[]) => void;
@@ -135,6 +139,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   multiHopPanelOpen: false,
   recommendedPaths: [],
   rightPanelOpen: false,
+  leftNavOpen: true,
+  searchModalOpen: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
@@ -237,6 +243,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
   setMultiHopPanelOpen: (open) => set({ multiHopPanelOpen: open }),
   setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
+  setLeftNavOpen: (open) => set({ leftNavOpen: open }),
+  setSearchModalOpen: (open) => set({ searchModalOpen: open }),
 
   setRecommendedPaths: (paths) => set({ recommendedPaths: paths }),
   clearRecommendedPaths: () => set({ recommendedPaths: [] }),
