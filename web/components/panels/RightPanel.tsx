@@ -133,10 +133,8 @@ export default function RightPanel() {
 
   return (
     <motion.aside
-      key="right-panel"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       style={{
         width: '100%',
@@ -144,7 +142,6 @@ export default function RightPanel() {
         background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        border: 'none',
         borderLeft: '1px solid var(--border)',
         boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
         overflowY: 'auto',
