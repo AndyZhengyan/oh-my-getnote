@@ -46,8 +46,8 @@ function getPathAwareRecommendations(
     }));
   }
 
-  // 指数衰减加权 (decay=0.5, 近节点权重高)
-  const DECAY = 0.5;
+  // 指数衰减加权 (decay=0.7, 近节点权重高，早期节点仍有贡献)
+  const DECAY = 0.7;
   const scores: Record<string, number> = {};
 
   browsePath.forEach((nodeId, i) => {
