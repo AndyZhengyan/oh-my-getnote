@@ -3,13 +3,13 @@
 
 import { useGraphStore } from '@/stores/graphStore';
 import { triggerGraphReset } from '@/stores/graphStore';
-import { Search, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 export default function Toolbar() {
   const {
-    graphIndex, domainFilter, typeFilter, searchQuery,
-    setDomainFilter, setTypeFilter, setSearchQuery,
+    graphIndex,
     selectNode,
-    highlightedTrailId, stopTrailPlayback,
+    highlightedTrailId,
+    stopTrailPlayback,
   } = useGraphStore();
 
   const handleReset = () => {
@@ -17,26 +17,11 @@ export default function Toolbar() {
     triggerGraphReset();
   };
 
-  const domains = graphIndex?.domains ?? [];
-  const types = Object.keys(graphIndex?.stats.by_type ?? {});
-
-  const filteredStats = (() => {
-    if (!graphIndex) return null;
-    const q = (searchQuery || '').toLowerCase();
-    let count = 0;
-    let connections = 0;
-    for (const [, entry] of Object.entries(graphIndex.index)) {
-      if (domainFilter && entry.domain !== domainFilter) continue;
-      if (typeFilter && entry.type !== typeFilter) continue;
-      if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
-      count++;
-      connections += entry.connections.length;
-    }
-    return { count, connections };
-  })();
+  const stats = graphIndex?.stats;
+  const totalNotes = stats?.total_notes ?? 0;
+  const totalConnections = stats?.total_connections ?? 0;
 
   return (
-    <>
     <header
       style={{
         position: 'fixed',
@@ -68,102 +53,13 @@ export default function Toolbar() {
 
       <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
 
-      {/* Search */}
-      <div style={{ flex: '1 1 200px', minWidth: 120 }}>
-        <div style={{ position: 'relative' }}>
-          <Search
-            size={14}
-            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
-          />
-          <input
-            type="search"
-            placeholder="搜索标题、内容、标签…"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              padding: '5px 10px 5px 32px',
-              fontSize: 13,
-              fontFamily: 'var(--font-ui)',
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-            }}
-            onFocus={e => {
-              e.target.style.borderColor = 'var(--accent)';
-              e.target.style.boxShadow = '0 0 0 3px var(--accent-light)';
-              e.target.style.background = '#fff';
-            }}
-            onBlur={e => {
-              e.target.style.borderColor = 'var(--border)';
-              e.target.style.boxShadow = 'none';
-              e.target.style.background = 'var(--bg-elevated)';
-            }}
-          />
-        </div>
-      </div>
-
-      <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 4 }}>
-        <span className="filter-group">
-          <span className="filter-badge filter-badge-domain">领域</span>
-          <select
-            value={domainFilter}
-            onChange={e => setDomainFilter(e.target.value)}
-            className="filter-select"
-            style={{
-              background: 'rgba(0,0,0,0.04)',
-              border: '1px solid transparent',
-              color: 'var(--text-secondary)',
-              padding: '4px 6px',
-              fontSize: 12,
-              fontFamily: 'var(--font-ui)',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="">全部</option>
-            {domains.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </span>
-
-        <span className="filter-group">
-          <span className="filter-badge filter-badge-type">类型</span>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="filter-select"
-            style={{
-              background: 'rgba(0,0,0,0.04)',
-              border: '1px solid transparent',
-              color: 'var(--text-secondary)',
-              padding: '4px 6px',
-              fontSize: 12,
-              fontFamily: 'var(--font-ui)',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="">全部</option>
-            {types.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </span>
-      </div>
-
       {/* Stats */}
-      {filteredStats && (
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-          {filteredStats.count} 篇 · {filteredStats.connections} 条关联
-        </span>
-      )}
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {totalNotes} 篇 · {totalConnections} 条关联
+      </span>
 
-      <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -213,6 +109,5 @@ export default function Toolbar() {
         </button>
       </div>
     </header>
-    </>
   );
 }
