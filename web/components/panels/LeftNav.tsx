@@ -38,7 +38,7 @@ export default function LeftNav() {
   const types = Object.keys(graphIndex.stats.by_type);
 
   const NAV_WIDTH = 280;
-  const COLLAPSED_WIDTH = 60;
+  const COLLAPSED_WIDTH = 48;
 
   return (
     <motion.aside
@@ -82,17 +82,21 @@ export default function LeftNav() {
         {leftNavOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      {/* Collapsed state: 3 icon buttons vertically centered */}
+      {/* Collapsed state: Logo + vertical icon buttons */}
       {!leftNavOpen && (
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-          padding: '0 0 20px 0',
+          justifyContent: 'flex-start',
+          gap: 0,
+          paddingTop: 8,
         }}>
+          {/* Logo */}
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 14 }}>
+            📚
+          </div>
           {/* Search icon */}
           <button
             onClick={() => setSearchModalOpen(true)}
