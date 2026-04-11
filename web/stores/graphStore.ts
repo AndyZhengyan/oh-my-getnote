@@ -9,6 +9,8 @@ export interface NoteIndexEntry {
   type: string;
   title: string;
   bodyPreview?: string;
+  createdAt?: string;
+  tags?: string[];
   connections: Array<{ noteId: string; score: number; type: string }>;
 }
 

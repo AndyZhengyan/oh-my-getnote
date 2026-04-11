@@ -74,7 +74,11 @@ function getPathAwareRecommendations(
     }));
 }
 
-export default function RightPanel() {
+interface RightPanelProps {
+  panelLeft: number; // left edge of the panel area (tracks LeftNav width)
+}
+
+export default function RightPanel({ panelLeft }: RightPanelProps) {
   const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, rightPanelOpen, setRightPanelOpen } = useGraphStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [note, setNote] = useState<NoteContent | null>(null);
@@ -128,27 +132,29 @@ export default function RightPanel() {
     finally { setAiLoading(false); }
   }, [selectedNodeId, note, graphIndex]);
 
-  if (!selectedNodeId || !graphIndex || !rightPanelOpen) return null;
+  if (!selectedNodeId || !graphIndex) return null;
   const entry = graphIndex.index[selectedNodeId];
   if (!entry) return null;
 
   const panelStyle: React.CSSProperties = isFullscreen
     ? {
-        position: 'fixed', top: 78, right: 14, bottom: 14,
-        left: 308, width: 'auto', maxHeight: 'calc(100vh - 92px)',
-        background: '#fff', border: 'none', borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        position: 'absolute', top: 0, right: 0, bottom: 0,
+        left: panelLeft, width: 'auto',
+        background: '#fff', border: 'none', borderRadius: 0,
+        boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
         overflowY: 'auto', zIndex: 300,
         display: 'flex', flexDirection: 'column',
         fontFamily: 'var(--font-ui)',
       }
     : {
-        position: 'fixed', top: 78, right: 14,
-        width: 380, maxHeight: 'calc(100vh - 92px)',
-        background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(20px)',
+        position: 'absolute', top: 0, right: 0,
+        left: panelLeft, width: 380,
+        maxHeight: '100%',
+        background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        border: 'none',
+        borderLeft: '1px solid var(--border)',
+        boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
         overflowY: 'auto', zIndex: 200,
         display: 'flex', flexDirection: 'column',
         fontFamily: 'var(--font-ui)',
@@ -157,7 +163,7 @@ export default function RightPanel() {
   return (
     <AnimatePresence>
       <motion.aside
-        key={`right-panel-${isFullscreen ? 'fullscreen' : 'normal'}`}
+        key={`right-panel-${isFullscreen ? 'fullscreen' : 'normal'}-${panelLeft}`}
         initial={{ x: 380, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 380, opacity: 0 }}
@@ -177,7 +183,7 @@ export default function RightPanel() {
           <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
             <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="打开原地址" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
-              <ExternalLink size={16} />
+              🔗
             </button>
             <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
               {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
