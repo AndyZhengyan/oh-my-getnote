@@ -142,7 +142,7 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
         left: panelLeft, width: 'auto',
         background: '#fff', border: 'none', borderRadius: 0,
         boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
-        overflowY: 'auto', zIndex: 300,
+        overflowY: 'auto', overflow: 'hidden', zIndex: 300,
         display: 'flex', flexDirection: 'column',
         fontFamily: 'var(--font-ui)',
       }
@@ -155,7 +155,7 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
         border: 'none',
         borderLeft: '1px solid var(--border)',
         boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
-        overflowY: 'auto', zIndex: 200,
+        overflowY: 'auto', overflow: rightPanelOpen ? 'auto' : 'hidden', zIndex: 200,
         display: 'flex', flexDirection: 'column',
         fontFamily: 'var(--font-ui)',
       };
@@ -164,9 +164,9 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
     <AnimatePresence>
       <motion.aside
         key={`right-panel-${isFullscreen ? 'fullscreen' : 'normal'}-${panelLeft}`}
-        initial={{ x: 380, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 380, opacity: 0 }}
+        initial={{ width: 0, opacity: 0 }}
+        animate={{ width: rightPanelOpen ? 380 : 0, opacity: rightPanelOpen ? 1 : 0 }}
+        exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
         style={panelStyle}
       >
