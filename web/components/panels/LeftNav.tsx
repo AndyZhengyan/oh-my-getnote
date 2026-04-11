@@ -2,10 +2,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useGraphStore, type RecommendedPath, type TrailStep } from '@/stores/graphStore';
-import { Bookmark, Trash2, X, ChevronUp, Sparkles } from 'lucide-react';
+import { useGraphStore, type TrailStep } from '@/stores/graphStore';
+import { Bookmark, Trash2, X, ChevronUp } from 'lucide-react';
 import { DOMAIN_COLORS } from '@/lib/constants';
-import { synthesizeRecommendedPaths, type VectorResult } from '@/lib/recommend';
+
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
 function compareAlphaFirst(a: string, b: string): number {
@@ -26,35 +26,10 @@ export default function LeftNav() {
     savedTrails,
     deleteTrail, saveTrail,
     selectNode, setRightPanelOpen,
-    recommendedPaths, setRecommendedPaths, markPathSaved,
   } = useGraphStore();
 
-  const [searching, setSearching] = useState(false);
-  const [trailCollapsed, setTrailCollapsed] = useState(false);
-  const [recommendCollapsed, setRecommendCollapsed] = useState(false);
 
-  const handleVectorSearch = async () => {
-    if (browsePath.length === 0) return;
-    setSearching(true);
-    try {
-      const selectedNotes = browsePath.map(id => graphIndex?.index[id]).filter(Boolean);
-      const texts = selectedNotes.map(n => (n as { title: string }).title);
-      const res = await fetch('/api/vector/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, limit: 10, excludeIds: browsePath }),
-      });
-      if (!res.ok) { setRecommendedPaths([]); return; }
-      const data = await res.json();
-      const rawResults: VectorResult[] = data.results ?? [];
-      const paths = synthesizeRecommendedPaths(rawResults, browsePath, graphIndex?.index ?? null);
-      setRecommendedPaths(paths.map(p => ({ ...p, domainColor: DOMAIN_COLORS[p.domain] ?? '#9CA3AF' })));
-    } catch {
-      setRecommendedPaths([]);
-    } finally {
-      setSearching(false);
-    }
-  };
+  const [trailCollapsed, setTrailCollapsed] = useState(false);
 
   if (!graphIndex) return null;
 
@@ -234,101 +209,10 @@ export default function LeftNav() {
                   </div>
                 );
               })}
-              {/* 多跳搜索 */}
-              {browsePath.length > 0 && (
-                <div style={{ padding: '4px 16px 6px' }}>
-                  <button
-                    onClick={handleVectorSearch}
-                    disabled={searching}
-                    style={{
-                      width: '100%',
-                      padding: '5px 8px',
-                      background: searching ? 'var(--bg-elevated)' : 'var(--accent)',
-                      border: '1px solid var(--accent)',
-                      borderRadius: 'var(--radius-md)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontFamily: 'var(--font-ui)',
-                      cursor: searching ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      opacity: searching ? 0.6 : 1,
-                    }}
-                  >
-                    <Sparkles size={11} />
-                    {searching ? '搜索中…' : '多跳搜索'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* 推荐链路 section — flex: 1 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
-            <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              推荐链路 ({recommendedPaths.length})
-            </span>
-            {/* 收起按钮 ▲ */}
-            <button
-              onClick={() => setRecommendCollapsed(c => !c)}
-              title={recommendCollapsed ? '展开' : '收起'}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-            >
-              <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: recommendCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
-            </button>
-            {/* × 收起 section */}
-            <button
-              onClick={() => setRecommendCollapsed(true)}
-              title="收起"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-            >
-              <X size={12} />
-            </button>
-          </div>
-
-          {/* Content — independent scroll */}
-          {!recommendCollapsed && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 8px' }}>
-              {recommendedPaths.length === 0 && (
-                <div style={{ padding: '4px 4px', fontSize: 11, color: 'var(--text-muted)' }}>
-                  {browsePath.length === 0 ? '追踪节点后可用' : '点击多跳搜索发现路线'}
-                </div>
-              )}
-              {recommendedPaths.map((path, rank) => (
-                <RecommendedPathCard
-                  key={path.noteId}
-                  path={path}
-                  rank={rank + 1}
-                  onSelect={() => { setRightPanelOpen(true); selectNode(path.noteId); }}
-                  onSaveTrail={() => {
-                    const trailSteps: TrailStep[] = [
-                      ...browsePath.map(noteId => ({ noteId, timestamp: new Date().toISOString() })),
-                      { noteId: path.noteId, timestamp: new Date().toISOString() },
-                    ];
-                    const date = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-                    saveTrail(`推荐路线 ${date}`, trailSteps);
-                    markPathSaved(path.noteId);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 历史轨迹 section — fixed */}
         <div style={{ flexShrink: 0 }}>
@@ -371,75 +255,6 @@ export default function LeftNav() {
   );
 }
 
-function RecommendedPathCard({
-  path, rank, onSelect, onSaveTrail,
-}: {
-  path: RecommendedPath;
-  rank: number;
-  onSelect: () => void;
-  onSaveTrail: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const rankBgColors = ['#6366F1', '#8B5CF6', '#10B981'];
-  const rankBg = rankBgColors[rank - 1] ?? '#9CA3AF';
-
-  return (
-    <div style={{ marginBottom: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', fontFamily: 'var(--font-ui)' }}>
-      <div
-        onClick={() => setExpanded(e => !e)}
-        style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', background: expanded ? 'rgba(0,0,0,0.02)' : 'transparent', transition: 'background 0.12s' }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-light)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = expanded ? 'rgba(0,0,0,0.02)' : 'transparent'; }}
-      >
-        <span style={{ width: 18, height: 18, borderRadius: 4, background: rankBg, color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {rank}
-        </span>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: path.domainColor, flexShrink: 0 }} />
-        <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {path.title}
-        </span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
-          {(path.compositeScore * 100).toFixed(0)}%
-        </span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, transition: 'transform 0.15s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}>
-          ▼
-        </span>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, color: path.domainColor, background: `${path.domainColor}18`, padding: '1px 6px', borderRadius: 4 }}>
-              {path.domain}
-            </span>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-muted)', padding: '1px 6px', borderRadius: 4 }}>
-              {path.type}
-            </span>
-          </div>
-          {path.text && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 8, padding: '6px 8px', background: 'rgba(0,0,0,0.02)', borderRadius: 5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
-              {path.text.replace(/\n+/g, ' ').trim()}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: 'var(--accent)', lineHeight: 1.5, marginBottom: 8, padding: '5px 8px', background: 'var(--accent-light)', borderRadius: 5 }}>
-            {path.explanation}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={e => { e.stopPropagation(); onSelect(); }}
-              style={{ flex: 1, padding: '5px 8px', background: 'var(--accent)', border: 'none', borderRadius: 5, color: '#fff', fontSize: 11, fontFamily: 'var(--font-ui)', cursor: 'pointer' }}>
-              前往
-            </button>
-            <button onClick={e => { e.stopPropagation(); onSaveTrail(); }}
-              disabled={path.isSaved}
-              style={{ flex: 1, padding: '5px 8px', background: path.isSaved ? 'var(--bg-muted)' : 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 5, color: path.isSaved ? 'var(--text-muted)' : 'var(--text-secondary)', fontSize: 11, fontFamily: 'var(--font-ui)', cursor: path.isSaved ? 'default' : 'pointer' }}>
-              {path.isSaved ? '已保存' : '保存路线'}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function NavItem({
   active, onClick, color, count, label,
