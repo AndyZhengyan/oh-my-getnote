@@ -20,10 +20,10 @@ function fixMarkdownLineBreaks(body: string): string {
 import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
-import { X, Sparkles, Loader2, Maximize, Minimize, ExternalLink } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { DOMAIN_COLORS } from '@/lib/constants';
 
 // 链路感知推荐算法
@@ -74,13 +74,8 @@ function getPathAwareRecommendations(
     }));
 }
 
-interface RightPanelProps {
-  panelLeft: number; // left edge of the panel area (tracks LeftNav width)
-}
-
-export default function RightPanel({ panelLeft }: RightPanelProps) {
-  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, rightPanelOpen, setRightPanelOpen } = useGraphStore();
-  const [isFullscreen, setIsFullscreen] = useState(false);
+export default function RightPanel() {
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, setRightPanelOpen } = useGraphStore();
   const [note, setNote] = useState<NoteContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -136,66 +131,51 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
   const entry = graphIndex.index[selectedNodeId];
   if (!entry) return null;
 
-  const panelStyle: React.CSSProperties = isFullscreen
-    ? {
-        position: 'absolute', top: 0, right: 0, bottom: 0,
-        left: panelLeft, width: 'auto',
-        background: '#fff', border: 'none', borderRadius: 0,
-        boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
-        overflowY: 'auto', overflow: 'hidden', zIndex: 300,
-        display: 'flex', flexDirection: 'column',
-        fontFamily: 'var(--font-ui)',
-      }
-    : {
-        position: 'absolute', top: 0, right: 0,
-        left: panelLeft, width: 380,
-        maxHeight: '100%',
-        background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)',
+  return (
+    <motion.aside
+      key="right-panel"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{
+        width: '100%',
+        height: '100%',
+        background: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         border: 'none',
         borderLeft: '1px solid var(--border)',
         boxShadow: '-4px 0 20px rgba(0,0,0,0.06)',
-        overflowY: 'auto', overflow: rightPanelOpen ? 'auto' : 'hidden', zIndex: 200,
-        display: 'flex', flexDirection: 'column',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
         fontFamily: 'var(--font-ui)',
-      };
-
-  return (
-    <AnimatePresence>
-      <motion.aside
-        key={`right-panel-${isFullscreen ? 'fullscreen' : 'normal'}-${panelLeft}`}
-        initial={{ width: 0, opacity: 0 }}
-        animate={{ width: rightPanelOpen ? 380 : 0, opacity: rightPanelOpen ? 1 : 0 }}
-        exit={{ width: 0, opacity: 0 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        style={panelStyle}
-      >
-        {/* Focus mode banner */}
-        {focusMode && (
-          <div style={{ padding: '8px 16px', background: 'var(--accent-light)', borderBottom: '1px solid var(--accent-mid)', fontSize: 11, color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'var(--font-ui)' }}>
-            <span>🧭 聚焦模式 · 右键节点展开关联</span>
-            <button onClick={() => setFocusMode(false)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>退出聚焦</button>
-          </div>
-        )}
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-            <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="打开原地址" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
-              🔗
-            </button>
-            <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
-              {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
-            </button>
-            <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-            </button>
-            <button onClick={() => setRightPanelOpen(false)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
-              <X size={16} />
-            </button>
-          </div>
+      }}
+    >
+      {/* Focus mode banner */}
+      {focusMode && (
+        <div style={{ padding: '8px 16px', background: 'var(--accent-light)', borderBottom: '1px solid var(--accent-mid)', fontSize: 11, color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'var(--font-ui)' }}>
+          <span>🧭 聚焦模式 · 右键节点展开关联</span>
+          <button onClick={() => setFocusMode(false)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>退出聚焦</button>
         </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+          <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="打开原地址" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
+            🔗
+          </button>
+          <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
+            {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
+          </button>
+          <button onClick={() => setRightPanelOpen(false)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
+            <X size={16} />
+          </button>
+        </div>
+      </div>
 
         {/* Meta */}
         <div style={{ padding: '10px 18px 8px', borderBottom: '1px solid var(--border)' }}>
@@ -228,7 +208,7 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
         )}
 
         {/* Content */}
-        <div style={{ padding: isFullscreen ? '20px 32px' : '14px 18px', flex: 1 }}>
+        <div style={{ padding: '14px 18px', flex: 1 }}>
           {loading && (
             <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', fontFamily: 'var(--font-ui)' }}>
               <Loader2 size={16} style={{ display: 'block', margin: '0 auto 8px', animation: 'spin 1s linear infinite' }} />
@@ -236,7 +216,7 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
             </div>
           )}
           {!loading && note?.body && (
-            <div className="markdown-body" style={{ fontSize: isFullscreen ? 15 : 13 }}>
+            <div className="markdown-body" style={{ fontSize: 13 }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixMarkdownLineBreaks(note.body)}</ReactMarkdown>
             </div>
           )}
@@ -294,6 +274,5 @@ export default function RightPanel({ panelLeft }: RightPanelProps) {
           })()}
         </div>
       </motion.aside>
-    </AnimatePresence>
   );
 }
