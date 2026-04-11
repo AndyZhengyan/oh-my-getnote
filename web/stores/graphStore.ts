@@ -142,8 +142,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
-    // Track previous selectedNodeId to detect actual changes
-    const prevId = state.selectedNodeId;
     let nextPath: string[];
     if (id && state.browsePath.includes(id)) {
       const idx = state.browsePath.indexOf(id);
@@ -155,8 +153,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     } else {
       nextPath = id ? [...state.browsePath, id] : [];
     }
-    // Auto-open right panel when a node is newly selected
-    const panelOpen = id !== null && id !== prevId ? true : state.rightPanelOpen;
+    // Auto-open right panel when a node is selected
+    const panelOpen = id !== null ? true : state.rightPanelOpen;
     set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: panelOpen });
   },
   focusNode: (id) => set(state => ({
