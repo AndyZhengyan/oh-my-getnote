@@ -75,7 +75,7 @@ function getPathAwareRecommendations(
 }
 
 export default function RightPanel() {
-  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath } = useGraphStore();
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, rightPanelOpen, setRightPanelOpen } = useGraphStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [note, setNote] = useState<NoteContent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -128,7 +128,7 @@ export default function RightPanel() {
     finally { setAiLoading(false); }
   }, [selectedNodeId, note, graphIndex]);
 
-  if (!selectedNodeId || !graphIndex) return null;
+  if (!selectedNodeId || !graphIndex || !rightPanelOpen) return null;
   const entry = graphIndex.index[selectedNodeId];
   if (!entry) return null;
 
@@ -175,14 +175,17 @@ export default function RightPanel() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)', gap: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, flex: 1, wordBreak: 'break-word', lineHeight: 1.4, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{entry.title}</h3>
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="查看源文件" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+            <button onClick={() => graphIndex?.archivePath && window.open('/api/source/' + graphIndex.archivePath + '/notes/' + selectedNodeId + '.html', '_blank')} title="打开原地址" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               <ExternalLink size={16} />
+            </button>
+            <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
+              {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
             </button>
             <button onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? '退出全屏' : '全屏查看'} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
-            <button onClick={() => selectNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
+            <button onClick={() => setRightPanelOpen(false)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
               <X size={16} />
             </button>
           </div>
@@ -236,21 +239,8 @@ export default function RightPanel() {
           )}
         </div>
 
-        {/* Footer: AI button + path-aware recommendations */}
+        {/* Footer: path-aware recommendations */}
         <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', fontFamily: 'var(--font-ui)' }}>
-          {!aiSummary && !aiLoading && (
-            <button onClick={handleAISummary} style={{
-              width: '100%', padding: '8px 12px',
-              background: 'var(--accent-light)', border: '1px solid var(--accent-mid)',
-              borderRadius: 'var(--radius-md)', color: 'var(--accent)', fontSize: 12,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              marginBottom: 12, fontFamily: 'var(--font-ui)',
-              transition: 'background 0.12s',
-            }}>
-              <Sparkles size={13} />✨ AI 摘要
-            </button>
-          )}
-
           {/* 链路感知推荐 */}
           {(() => {
             const recommendations = getPathAwareRecommendations(
