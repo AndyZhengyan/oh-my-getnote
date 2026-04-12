@@ -90,7 +90,8 @@ export default function SearchModal() {
             initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             style={{
-              position: 'fixed', top: 80, left: 14,
+              position: 'fixed', top: 80, left: '50%',
+              transform: 'translateX(-50%)',
               width: 420, maxHeight: 'calc(100vh - 120px)',
               background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
