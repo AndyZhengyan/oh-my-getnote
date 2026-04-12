@@ -167,10 +167,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       set({ rightPanelOpen: false });
       return;
     }
-    // Always append to the path - whether from graph click or search
-    // This preserves the exploration sequence
-    const nextPath = [...state.browsePath, id];
-    set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: true });
+
+    // Always append to path to preserve the full exploration sequence
+    set({ selectedNodeId: id, browsePath: [...state.browsePath, id], rightPanelOpen: true });
   },
   clearSelection: () => {
     set({ selectedNodeId: null, browsePath: [], rightPanelOpen: false });

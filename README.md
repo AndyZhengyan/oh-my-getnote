@@ -25,6 +25,10 @@
 
 ---
 
+## 🎬 演示视频
+
+https://github.com/AndyZhengyan/oh-my-getnote/blob/main/docs/demo.mov
+
 ## ✨ 核心能力
 
 * **🤖 AI 驱动的"语义补完"**
