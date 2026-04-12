@@ -71,8 +71,6 @@ export default function SearchModal() {
 
   const types = Object.keys(graphIndex?.stats.by_type ?? {});
 
-  if (typeof document === 'undefined') return null;
-
   const modalContent = (
     <AnimatePresence>
       {searchModalOpen && (
@@ -89,25 +87,30 @@ export default function SearchModal() {
               zIndex: 500,
             }}
           />
-          {/* Modal — 页面中上居中，大尺寸 */}
-          <motion.div
-            initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+          {/* Modal — 页面中上居中，大尺寸（wrapper 负责居中，motion.div 只负责动画避免 transform 冲突） */}
+          <div
             style={{
               position: 'fixed', top: '18%', left: '50%',
               transform: 'translateX(-50%)',
               width: 640,
-              maxHeight: '72vh',
-              background: 'rgba(255,255,255,0.98)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              borderRadius: 14,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)',
               zIndex: 510,
-              display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}
           >
+            <motion.div
+              initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              style={{
+                width: 640,
+                maxHeight: '72vh',
+                background: 'rgba(255,255,255,0.98)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(0,0,0,0.08)',
+                borderRadius: 14,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              }}
+            >
             {/* Search bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
               <Search size={17} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -172,10 +175,13 @@ export default function SearchModal() {
               ))}
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
 
-  return createPortal(modalContent, document.body);
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null;
 }
