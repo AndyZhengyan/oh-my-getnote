@@ -1,6 +1,6 @@
 # 🧠 Oh My Getnote
 
-![Oh My GetNote Banner](./Gemini_Generated_Image_9fk5nq9fk5nq9fk5.png)
+![Oh My GetNote Banner](./banner.png)
 
 > **当 1945 年的 Memex 遇上 2024 年的 LLM-Wiki。**
 > 从碎片化的 GetNote 笔记，到有灵魂的知识足迹 👣。
