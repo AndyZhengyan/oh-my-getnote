@@ -27,7 +27,7 @@
 
 ## 🎬 演示视频
 
-https://github.com/AndyZhengyan/oh-my-getnote/blob/main/docs/demo.mov
+<video src="https://github.com/AndyZhengyan/oh-my-getnote/raw/main/docs/demo.mp4" controls></video>
 
 ## ✨ 核心能力
 
