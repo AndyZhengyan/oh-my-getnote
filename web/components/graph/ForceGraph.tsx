@@ -207,9 +207,9 @@ export default function ForceGraph() {
             nodes.forEach(n => (globalThis as any)._nodePosCache.delete(n.id));
           }
         } else {
-          // Multi-node: use standard zoomToFit.
+          // Multi-node: use standard zoomToFit with tighter padding.
           fgRef.current.centerAt(0, 0, 1);
-          fgRef.current.zoomToFit(800, 100);
+          fgRef.current.zoomToFit(400, 50);
           fgRef.current.d3ReheatSimulation();
           fgRef.current.resumeAnimation();
         }
@@ -234,6 +234,28 @@ export default function ForceGraph() {
       fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
     }
   }, [selectedNodeId, rightPanelOpen]);
+
+  // When a node is selected, zoom in to show its neighborhood (≈20-25 nodes, readable titles)
+  useEffect(() => {
+    if (!selectedNodeId || !fgRef.current) return;
+    const nodePos = (globalThis as any)._nodePosCache?.get(selectedNodeId);
+    if (!nodePos || nodePos.x == null) return;
+    // Center on selected node with tighter zoom (no zoomToFit — just center + zoom in)
+    fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
+    fgRef.current.zoom(1.5, 300);
+  }, [selectedNodeId]);
+
+  // Initial graph zoom-in: show ~20-30 nodes with readable titles (not all 655)
+  const initialZoomDone = useRef(false);
+  useEffect(() => {
+    if (!fgRef.current || nodes.length === 0 || initialZoomDone.current) return;
+    initialZoomDone.current = true;
+    setTimeout(() => {
+      if (!fgRef.current) return;
+      fgRef.current.centerAt(0, 0, 1);
+      fgRef.current.zoom(1.2, 500);
+    }, 1500);
+  }, [nodes.length]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -489,14 +511,14 @@ export default function ForceGraph() {
           const tLevel = levelMap.get(tid) ?? 'peripheral';
           if (sLevel === 'ghost' || tLevel === 'ghost') return 'rgba(0,0,0,0)';
 
-          // 1. Trail edges (My logic steps) -> Amber solid
-          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#F59E0B';
+          // 1. Trail edges (My logic steps) -> Purple solid
+          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#7C3AED';
 
-          // 2. Recommendation edges (Future steps from current node) -> Faint Amber
+          // 2. Recommendation edges (Future steps from current node) -> Faint Purple
           if (selectedNodeId || focusMode) {
             const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
             if (isFromCurrent && (sLevel === 'level1' || tLevel === 'level1')) {
-              return 'rgba(245, 158, 11, 0.4)'; // Faint amber for "Future paths"
+              return 'rgba(124, 58, 237, 0.4)'; // Faint purple for "Future paths"
             }
             if (sLevel === 'level1' || tLevel === 'level1') {
               return 'rgba(124, 58, 237, 0.1)'; // Very faint purple for background relations
@@ -511,7 +533,7 @@ export default function ForceGraph() {
           const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
 
           const isTrajectory = trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`);
-          if (isTrajectory) return 2.5;
+          if (isTrajectory) return 4;
 
           const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
           if (isFromCurrent) return 1.2;

@@ -239,7 +239,7 @@ export default function RightPanel() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {recommendations.map(rec => (
-                    <div key={rec.noteId} onClick={() => selectNode(rec.noteId)} style={{
+                    <div key={rec.noteId} onClick={() => { selectNode(rec.noteId); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{
                       padding: '7px 10px',
                       background: 'rgba(0,0,0,0.03)',
                       borderRadius: 'var(--radius-md)',
