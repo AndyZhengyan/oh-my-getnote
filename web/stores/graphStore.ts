@@ -168,18 +168,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       return;
     }
 
-    // Check if id is already in browsePath - if so, truncate path to that point
-    const existingIndex = state.browsePath.indexOf(id);
-    let nextPath;
-    if (existingIndex !== -1) {
-      // Truncate path to existing node position (inclusive) to avoid duplicates
-      nextPath = state.browsePath.slice(0, existingIndex + 1);
-    } else {
-      // Append to the path - whether from graph click or search
-      // This preserves the exploration sequence
-      nextPath = [...state.browsePath, id];
-    }
-    set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: true });
+    // Always append to path to preserve the full exploration sequence
+    set({ selectedNodeId: id, browsePath: [...state.browsePath, id], rightPanelOpen: true });
   },
   clearSelection: () => {
     set({ selectedNodeId: null, browsePath: [], rightPanelOpen: false });
