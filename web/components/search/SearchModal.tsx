@@ -90,8 +90,8 @@ export default function SearchModal() {
           {/* Modal — 页面中上居中，大尺寸（wrapper 负责居中，motion.div 只负责动画避免 transform 冲突） */}
           <div
             style={{
-              position: 'fixed', top: '18%', left: '50%',
-              transform: 'translateX(-50%)',
+              position: 'fixed', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
               width: 640,
               zIndex: 510,
             }}

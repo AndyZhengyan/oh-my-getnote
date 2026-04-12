@@ -277,19 +277,19 @@ describe('browsePath — auto-trace behavior', () => {
     expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
   });
 
-  it('clicking same node again removes it and subsequent', () => {
+  it('clicking same node again keeps path and opens panel', () => {
     useGraphStore.getState().selectNode('node-a');
     useGraphStore.getState().selectNode('node-b');
-    useGraphStore.getState().selectNode('node-a'); // 再点 node-a → 移除
-    expect(useGraphStore.getState().browsePath).toEqual([]);
+    useGraphStore.getState().selectNode('node-a'); // 再点 node-a → 保持路径不变
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-a']);
   });
 
-  it('clicking middle node truncates path after it', () => {
+  it('clicking middle node appends to path (no truncation)', () => {
     useGraphStore.getState().selectNode('node-a');
     useGraphStore.getState().selectNode('node-b');
     useGraphStore.getState().selectNode('node-c');
-    useGraphStore.getState().selectNode('node-b'); // 截断到 node-b
-    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+    useGraphStore.getState().selectNode('node-b'); // 追加 node-b 到末尾
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c', 'node-b']);
   });
 
   it('last node is always the selected node', () => {
@@ -302,6 +302,169 @@ describe('browsePath — auto-trace behavior', () => {
     useGraphStore.getState().selectNode('node-a');
     useGraphStore.getState().selectNode('node-b');
     useGraphStore.getState().clearBrowsePath();
+    expect(useGraphStore.getState().browsePath).toEqual([]);
+  });
+
+  it('removeFromBrowsePath removes only that node (not subsequent)', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().selectNode('node-c');
+    useGraphStore.getState().removeFromBrowsePath('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-c']);
+  });
+
+  it('previewNode changes selectedNodeId without modifying browsePath', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().previewNode('node-c');
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-c');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']); // 路径不变
+  });
+
+  it('previewNode(null) closes panel without clearing selection', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().previewNode(null);
+    expect(useGraphStore.getState().rightPanelOpen).toBe(false);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-a'); // 保持选中
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a']);
+  });
+
+  it('clearSelection clears everything', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().clearSelection();
+    expect(useGraphStore.getState().selectedNodeId).toBe(null);
+    expect(useGraphStore.getState().browsePath).toEqual([]);
+    expect(useGraphStore.getState().rightPanelOpen).toBe(false);
+  });
+});
+
+// ============================================================
+// 场景测试：完整用户流程
+// ============================================================
+
+describe('场景测试 — 完整用户流程', () => {
+  beforeEach(() => {
+    // 每次测试前重置 store
+    useGraphStore.setState({
+      selectedNodeId: null,
+      browsePath: [],
+      rightPanelOpen: false,
+      savedTrails: [],
+      highlightedTrailId: null,
+      highlightedTrailNodeIds: [],
+    });
+  });
+
+  it('场景1: 图谱点击多个节点 → 路径正确追加', () => {
+    // 点击节点 A → 路径: [A]
+    useGraphStore.getState().selectNode('node-a');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a']);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-a');
+    expect(useGraphStore.getState().rightPanelOpen).toBe(true);
+
+    // 点击节点 B → 路径: [A, B]
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-b');
+
+    // 点击节点 C → 路径: [A, B, C]
+    useGraphStore.getState().selectNode('node-c');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+  });
+
+  it('场景2: 删除中间节点后自动连线 → 路径保持顺序', () => {
+    // 建立路径: [A, B, C, D]
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().selectNode('node-c');
+    useGraphStore.getState().selectNode('node-d');
+
+    // 删除中间节点 B → 路径: [A, C, D]（保持顺序）
+    useGraphStore.getState().removeFromBrowsePath('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-c', 'node-d']);
+
+    // 删除最后一个节点 D → 路径: [A, C]
+    useGraphStore.getState().removeFromBrowsePath('node-d');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-c']);
+  });
+
+  it('场景3: 搜索点击节点追加到链路 → 始终追加不截断', () => {
+    // 从图谱建立路径: [A, B]
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+
+    // 从搜索点击节点 C（已存在的节点）→ 追加而非截断，路径: [A, B, C]
+    useGraphStore.getState().selectNode('node-c');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+
+    // 再点击 A → 路径: [A, B, C, A]
+    useGraphStore.getState().selectNode('node-a');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c', 'node-a']);
+  });
+
+  it('场景4: 左侧轨迹点击只预览不改变链路', () => {
+    // 建立当前路径: [A, B, C]
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    useGraphStore.getState().selectNode('node-c');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+
+    // 点击历史轨迹中的节点 D（previewNode）→ 路径不变
+    useGraphStore.getState().previewNode('node-d');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-d'); // 但选中了 D
+    expect(useGraphStore.getState().rightPanelOpen).toBe(true);
+
+    // 再点击另一个节点 E → 路径依然不变
+    useGraphStore.getState().previewNode('node-e');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-e');
+  });
+
+  it('场景4补充: 预览模式下关闭面板 → 保持选中状态', () => {
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().previewNode('node-b');
+
+    // 关闭面板
+    useGraphStore.getState().previewNode(null);
+    expect(useGraphStore.getState().rightPanelOpen).toBe(false);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-b'); // 保持选中
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a']);
+  });
+
+  it('综合: 完整用户旅程', () => {
+    // 1. 从图谱点击建立路径
+    useGraphStore.getState().selectNode('node-a');
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+
+    // 2. 关闭右侧面板查看图谱（保持选中）
+    useGraphStore.getState().selectNode(null);
+    expect(useGraphStore.getState().rightPanelOpen).toBe(false);
+    expect(useGraphStore.getState().selectedNodeId).toBe('node-b');
+
+    // 3. 再次点击同一节点 → 只打开面板
+    useGraphStore.getState().selectNode('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b']);
+
+    // 4. 从搜索点击新节点
+    useGraphStore.getState().selectNode('node-c');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-b', 'node-c']);
+
+    // 5. 左侧删除中间节点
+    useGraphStore.getState().removeFromBrowsePath('node-b');
+    expect(useGraphStore.getState().browsePath).toEqual(['node-a', 'node-c']);
+
+    // 6. 保存轨迹
+    useGraphStore.getState().saveTrail('测试轨迹');
+    expect(useGraphStore.getState().savedTrails).toHaveLength(1);
+    expect(useGraphStore.getState().savedTrails[0].steps).toHaveLength(2);
+
+    // 7. 清空选择
+    useGraphStore.getState().clearSelection();
+    expect(useGraphStore.getState().selectedNodeId).toBe(null);
     expect(useGraphStore.getState().browsePath).toEqual([]);
   });
 });

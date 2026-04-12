@@ -104,11 +104,12 @@ turndownService.addRule('imageSrc', {
   filter: 'img',
   replacement(_content: string, node: any) {
     const src: string = node.getAttribute?.('src') ?? '';
-    if (!src) return '';
-    const extMatch = src.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-    if (!extMatch) return '';
-    // Strip any path prefix (e.g. "files/foo.jpeg" → "foo.jpeg")
+    if (!src || src.startsWith('http')) return '';
     const basename = path.basename(src);
+    // Match images with extension or hash-based names (32-char hex)
+    if (!src.match(/\.(jpg|jpeg|png|gif|webp)$/i) && !basename.match(/^[a-f0-9]{32}$/i)) {
+      return '';
+    }
     return `![${basename}](images/${(this as any)['noteId']}/${basename})`;
   },
 });

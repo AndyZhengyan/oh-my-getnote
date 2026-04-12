@@ -214,18 +214,42 @@ function copyImages(
   const imgMatches = [...html.matchAll(/src=["']([^"']+)["']/gi)];
   for (const m of imgMatches) {
     const src = m[1];
-    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(src) && !src.startsWith('http')) {
-      const srcPath = path.join(sourceNotesDir, src);
-      if (fs.existsSync(srcPath)) {
-        const fname = path.basename(srcPath);
-        try {
-          fs.copyFileSync(srcPath, path.join(targetImageDir, fname));
-        } catch {
-          // 单个图片复制失败不影响整体流程
+    if (src.startsWith('http')) continue;
+
+    let srcPath = path.join(sourceNotesDir, src);
+    let fname = path.basename(srcPath);
+
+    // If the file doesn't exist, search for it by hash (filename without extension)
+    if (!fs.existsSync(srcPath)) {
+      const filesDir = path.join(sourceNotesDir, 'files');
+      if (fs.existsSync(filesDir)) {
+        const files = fs.readdirSync(filesDir);
+        const hash = path.basename(src);
+        const match = files.find(f => f.startsWith(hash));
+        if (match) {
+          srcPath = path.join(filesDir, match);
+          fname = match;
         }
       }
     }
+
+    if (fs.existsSync(srcPath)) {
+      try {
+        fs.copyFileSync(srcPath, path.join(targetImageDir, fname));
+      } catch {
+        // 单个图片复制失败不影响整体流程
+      }
+    }
   }
+}
+
+/**
+ * Fix HTML image paths: rewrite relative `files/xxx` to `../files/xxx`
+ * so they resolve correctly when HTML is served from the notes/ directory.
+ */
+function fixHtmlImagePaths(html: string): string {
+  // Replace src="files/xxx" with src="../files/xxx"
+  return html.replace(/src=["']files\//g, 'src="../files/');
 }
 
 async function main() {
@@ -290,13 +314,19 @@ async function main() {
 
   for (const note of notes) {
     const htmlPath = path.join(notesDir, note.id + '.html');
-    const html = fs.readFileSync(htmlPath, 'utf-8');
+    let html = fs.readFileSync(htmlPath, 'utf-8');
+
+    // 修复 HTML 中的图片路径：files/xxx → ../files/xxx
+    const fixedHtml = fixHtmlImagePaths(html);
+    if (fixedHtml !== html) {
+      fs.writeFileSync(htmlPath, fixedHtml, 'utf-8');
+    }
 
     // 复制图片
     const noteImageDir = path.join(imagesOutDir, note.id);
     copyImages(html, notesDir, noteImageDir);
 
-    const result = convertHtmlToMarkdown(html, note.id);
+    const result = convertHtmlToMarkdown(fixedHtml, note.id);
     if (!result) continue;
 
     // 幂等性：写入 Markdown 时，将 frontmatter 加入 metadataMap（无论文件是否已存在）

@@ -20,7 +20,7 @@ function fixMarkdownLineBreaks(body: string): string {
 import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
-import { X, Sparkles, Loader2, Save } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
@@ -72,7 +72,7 @@ function getPathAwareRecommendations(
 }
 
 export default function RightPanel() {
-  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, saveTrail } = useGraphStore();
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, setRightPanelOpen } = useGraphStore();
   const [note, setNote] = useState<NoteContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -165,13 +165,7 @@ export default function RightPanel() {
           <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
             {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
           </button>
-          <button onClick={() => {
-            const name = window.prompt('输入轨迹名称：');
-            if (name) saveTrail(name);
-          }} title="保存轨迹" disabled={!browsePath?.length} style={{ background: 'none', border: 'none', color: browsePath?.length ? 'var(--text-muted)' : 'var(--border)', cursor: browsePath?.length ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
-            <Save size={16} />
-          </button>
-          <button onClick={() => selectNode(null)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
+          <button onClick={() => setRightPanelOpen(false)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
             <X size={16} />
           </button>
         </div>
