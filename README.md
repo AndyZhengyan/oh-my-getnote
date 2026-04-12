@@ -1,89 +1,87 @@
-# 🧠 Oh My GetNote
+# 🧠 Oh My Getnote
 
 ![Oh My GetNote Banner](./Gemini_Generated_Image_9fk5nq9fk5nq9fk5.png)
 
-> 从碎片化的 GetNote 到有灵魂的知识图谱，致敬 Memex 与大模型时代的知识涌现。
+> **当 1945 年的 Memex 遇上 2024 年的 LLM-Wiki。**
+> 从碎片化的 GetNote 笔记，到有灵魂的知识足迹 👣。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
 ![Next.js](https://img.shields.io/badge/framework-Next.js%2016-black)
 
-*"人脑不是那样运作的。它靠联想运转。" —— 范内瓦尔·布什 (Vannevar Bush), 1945*
-
-七十五年前，Memex 描绘了一台让所有知识相互链接的机器；今天，借助大语言模型与向量检索技术，**Oh My GetNote** 让这一构想在你的本地环境中生根发芽。它不仅是一个数据转换工具，更是一个为你量身打造的**可交互个人 Memex 中心**。
-
 ---
 
-## 💡 为什么做 Oh My GetNote？
+## 🏛️ 核心哲学：双重致敬
 
-我们在 [GetNote](https://www.biji.com) 中沉淀了大量的思考与摘录，但传统的 HTML 导出让知识沦为了静态的信息孤岛。
+本项目不仅仅是一个数据转换工具，它是一次关于"人类如何管理知识"的实验，旨在致敬两位跨越时代的先驱：
 
-本平台采用极简的系统设计，旨在打破僵化的树状目录。它将孤立的笔记重塑为具备关联、可无限探索的动态图谱（Graph）。不再依赖繁琐的手动分类，而是**让大模型作为辅助大脑，让知识的隐性关联自然浮现。**
+### 1. Vannevar Bush (Memex, 1945)
+**"人脑靠联想运转。"** —— Bush 认为知识不应被困在死板的分类里，而应沿着思维的"水迹"（Trails）自由流淌。
+* **本项目的实现**：通过交互式图谱（Force Graph）复刻 Memex，让你的点击路径成为可追溯、可沉淀的思维足迹。
+
+### 2. Andrej Karpathy (LLM-Wiki, 2024)
+**"知识应当为 AI 消费而优化。"** —— Karpathy 提倡将文档转化为高信息密度、极简化的 Markdown，以提升 LLM 的推理效率。
+* **本项目的实现**：将 GetNote 混乱的 HTML 彻底清洗为结构化的 LLM-friendly Markdown，把你的笔记库重塑为一套个人私有的"AI 知识核心（Kernel）"。
+
+---
 
 ## ✨ 核心能力
 
-- **🤖 AI 智能涌现 (AI Recommendation)**
-  点击任意节点，AI 将结合上下文语境自动推荐最相关的笔记，在看似毫无关联的领域之间，碰撞出意外的灵感火花。
-- **👣 知识足迹 (Exploration Trails)**
-  你在图谱上的每一次探索都会被自然记录。这些无形的"脚印"复刻了你的思维轨迹，随时可以回溯、沉淀并分享给他人。
-- **🌌 向量多跳检索 (Vector Multi-Hop Search)**
-  突破传统的字面匹配。利用本地 LanceDB 向量数据库，挖掘两跳、三跳以外的深层隐性关联，让深埋底层的知识重见天日。
-- **🎯 纯粹与极简的视觉交互**
-  拒绝繁冗、刻意科幻的复杂界面，采用克制而干净的 UI 设计，让你专注于知识的连接与思绪的流淌。支持按领域、类型进行快速的图谱过滤。
+* **🤖 AI 驱动的"语义补完"**
+    基于 LLM-Wiki 理念，AI 不再仅仅是搜索工具，它通过理解你的 Markdown 语料，在图谱中为你指引下一个可能感兴趣的"逻辑跳跃点"。
+* **👣 可视化的"思维水迹" (Trails)**
+    致敬 Memex 构想。记录你在知识海洋中的漫游路径，这些路径可以被命名、回溯，成为你研究特定课题的神经通路。
+* **📂 从"废墟"到"金矿"的转换引擎**
+    一键将 GetNote 的 HTML 碎片重塑为标准、整洁的 Markdown 文档流。去除视觉噪声，保留知识精髓。
+* **🌌 向量化多跳关联**
+    利用本地 LanceDB 向量引擎，挖掘跨越多个节点的隐性关联，让那些被遗忘在角落的知识重新产生"连接感"。
 
 ---
 
-## 🚀 快速起步
+## 🏗️ 技术底座
 
-只需简单的几步，即可唤醒你的沉睡笔记：
+| 维度 | 技术选型 | 哲学体现 |
+| :--- | :--- | :--- |
+| **数据层** | `LanceDB` + `Clean Markdown` | **LLM-Wiki**: 结构化、可编程、AI 友好 |
+| **视图层** | `Next.js 16` + `react-force-graph` | **Memex**: 非线性探索、联想式交互 |
+| **逻辑层** | `OpenAI/OpenRouter` + `Vector API` | **智能涌现**: 让静态数据转化为动态思维 |
+
+---
+
+## 🚀 快速上手
 
 ### 1. 准备数据
-从 GetNote 导出你的个人知识库（`设置` -> `导出` -> `HTML`），并将文件统一放入本项目的 `source/` 目录。
+从 [GetNote](https://www.biji.com) 导出 HTML 压缩包，解压至项目的 `source/` 目录。
 
 ### 2. 环境配置
 ```bash
-# 安装底层依赖与前端环境
+# 安装全栈依赖
 npm install && cd web && npm install && cd ..
 
-# 配置大模型环境变量 (支持 OpenAI 或 OpenRouter)
+# 配置 API Key (支持 OpenAI 或 OpenRouter)
 cp web/.env.local.example web/.env.local
 ```
 
-### 3. 数据转换与启动
+### 3. 构建与启动
 
 ```bash
-# 将 HTML 数据解析、转换为 Markdown 及图谱关联索引
+# 运行转换器：将 HTML 碎片转化为 LLM-Wiki 格式
 npx tsx tools/convert.ts source/ --out .
 
-# 启动图谱可视化平台
+# 唤醒你的个人 Memex
 cd web && npm run dev
 ```
 
-打开浏览器访问 `http://localhost:3000/graph`，开启你的无界探索之旅。
+访问 `http://localhost:3000/graph`，开始你的探索。
 
 ---
 
-## 🏗 系统架构与技术栈
+## 🎯 愿景
 
-项目整体保持高内聚、低耦合的全栈架构设计：
-
-  - **核心框架**: `Next.js 16 (App Router)` + `TypeScript`
-  - **UI & 交互**: `Tailwind CSS v4` + `react-force-graph-2d`
-  - **智能大脑**: `OpenAI SDK` / `OpenRouter`
-  - **向量检索**: `LanceDB` (轻量级本地向量引擎)
-  - **工程化质量**: `Vitest` + `Playwright` 自动化测试闭环
-
-## 🛣 演进方向
-
-  - 持续优化海量节点下的图谱渲染性能与极简交互体验。
-  - 探索与 **Model Context Protocol (MCP)** 等生态的集成，将个人的 Memex 知识库能力以标准接口形式赋能给更多外部的 AI Agent。
+**Oh My Getnote** 并不想做另一个笔记软件。我们希望在这个 AGI 时代，通过将 Bush 的**交互直觉**与 Karpathy 的**数据标准**结合，让每个人的个人知识库都能成为其数字生命的一部分。
 
 ---
 
-## 🤝 参与贡献
+**致敬那些试图让人类思考得更深、更远的先驱。**
 
-欢迎每一个热爱系统思考与知识管理的开发者参与共建。无论是架构优化还是新特性研发，期待你的加入。请参考 [CONTRIBUTING.md](https://www.google.com/search?q=./CONTRIBUTING.md) 了解更多详情，并遵循我们的 [行为准则](https://www.google.com/search?q=./CODE_OF_CONDUCT.md)。
-
-## 📄 开源协议
-
-本项目基于 [MIT License](https://www.google.com/search?q=./LICENSE) 协议开源 © Andy Zhengyan
+[CONTRIBUTING.md](CONTRIBUTING.md) · [LICENSE](LICENSE) · MIT © Andy Zhengyan
