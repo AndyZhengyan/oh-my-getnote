@@ -4,11 +4,9 @@ import { synthesizeRecommendedPaths } from './recommend';
 import type { VectorResult } from './recommend';
 
 const makeEntry = (overrides: Partial<{
-  domain: string;
   connections: Array<{ noteId: string; score: number; type: string }>;
 }> = {}) => ({
   path: '/dummy.md',
-  domain: overrides.domain ?? '',
   type: 'AI链接笔记',
   title: 'Dummy',
   bodyPreview: '',
@@ -16,10 +14,10 @@ const makeEntry = (overrides: Partial<{
 });
 
 const graphIndex = {
-  'node-a': { ...makeEntry({ domain: 'AI 核心技术与模型' }), title: '节点A' },
-  'node-b': { ...makeEntry({ domain: 'AI 核心技术与模型', connections: [{ noteId: 'node-c', score: 0.9, type: 'AI链接笔记' }] }), title: '节点B' },
-  'node-c': { ...makeEntry({ domain: 'AI 智能体与工程', connections: [] }), title: '节点C' },
-  'node-d': { ...makeEntry({ domain: '管理、职场与个人成长' }), title: '节点D' },
+  'node-a': { ...makeEntry(), title: '节点A' },
+  'node-b': { ...makeEntry({ connections: [{ noteId: 'node-c', score: 0.9, type: 'AI链接笔记' }] }), title: '节点B' },
+  'node-c': { ...makeEntry({ connections: [] }), title: '节点C' },
+  'node-d': { ...makeEntry(), title: '节点D' },
 };
 
 const rawResults: VectorResult[] = [
@@ -50,18 +48,6 @@ describe('synthesizeRecommendedPaths', () => {
     }
   });
 
-  it('boosts score when domain matches browsePath domain (recency bias)', () => {
-    const result = synthesizeRecommendedPaths(rawResults, ['node-a', 'node-b'], graphIndex);
-    // node-c and node-b share domain 'AI 核心技术与模型'; node-d is different
-    const nodeC = result.find(r => r.noteId === 'node-c');
-    const nodeD = result.find(r => r.noteId === 'node-d');
-    // node-c has domain alignment bonus on top of high vector score
-    if (nodeC && nodeD) {
-      // node-c should rank higher due to domain match with node-b (most recent in path)
-      expect(result.indexOf(nodeC)).toBeLessThan(result.indexOf(nodeD));
-    }
-  });
-
   it('boosts score when candidate is directly connected to a browsePath node', () => {
     const result = synthesizeRecommendedPaths(rawResults, ['node-a', 'node-b'], graphIndex);
     // node-b has connection to node-c, so node-c gets connection bonus
@@ -75,13 +61,6 @@ describe('synthesizeRecommendedPaths', () => {
       expect(typeof path.explanation).toBe('string');
       expect(path.explanation.length).toBeGreaterThan(0);
     }
-  });
-
-  it('sets domainColor to empty string (caller resolves via DOMAIN_COLORS)', () => {
-    const result = synthesizeRecommendedPaths(rawResults, ['node-a'], graphIndex);
-    const nodeC = result.find(r => r.noteId === 'node-c');
-    // domainColor is intentionally left empty — LeftNav resolves it via DOMAIN_COLORS
-    expect(nodeC?.domainColor).toBe('');
   });
 
   it('marks isSaved false initially', () => {

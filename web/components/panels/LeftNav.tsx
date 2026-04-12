@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useGraphStore, type TrailStep, type GraphIndex } from '@/stores/graphStore';
 import { Bookmark, Trash2, ChevronUp, ChevronLeft, ChevronRight, Search, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { DOMAIN_COLORS } from '@/lib/constants';
 
 
 /** 英文字母序优先，其余按 localeCompare 排的 comparator */
@@ -160,7 +159,6 @@ function TagTreeList({
 export default function LeftNav() {
   const {
     graphIndex,
-    domainFilter, setDomainFilter,
     typeFilter, setTypeFilter,
     tagTreeFilter, setTagTreeFilter,
     browsePath,

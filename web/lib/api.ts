@@ -19,12 +19,10 @@ export interface NoteIndexEntry {
 export interface GraphIndex {
   version: string;
   generated_at: string;
-  domains: string[];
   index: Record<string, NoteIndexEntry>;
   stats: {
     total_notes: number;
     total_connections: number;
-    by_domain: Record<string, number>;
     by_type: Record<string, number>;
     by_tagTree: Record<string, number>;
     tagTree: TagNode[];

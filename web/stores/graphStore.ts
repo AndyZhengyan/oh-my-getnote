@@ -12,7 +12,6 @@ export interface TagNode {
 
 export interface NoteIndexEntry {
   path: string;
-  domain: string;
   type: string;
   title: string;
   tagTree: string[];
@@ -25,13 +24,11 @@ export interface NoteIndexEntry {
 export interface GraphIndex {
   version: string;
   generated_at: string;
-  domains: string[];
   index: Record<string, NoteIndexEntry>;
   archivePath?: string;
   stats: {
     total_notes: number;
     total_connections: number;
-    by_domain: Record<string, number>;
     by_type: Record<string, number>;
     by_tagTree: Record<string, number>;
     tagTree: TagNode[];
@@ -53,8 +50,6 @@ export interface Trail {
 export interface RecommendedPath {
   noteId: string;
   title: string;
-  domain: string;
-  domainColor: string;
   type: string;
   score: number;
   compositeScore: number;
@@ -81,7 +76,6 @@ interface GraphState {
   graphIndex: GraphIndex | null;
   loaded: boolean;
   error: string | null;
-  domainFilter: string;
   typeFilter: string;
   tagTreeFilter: string;
   searchQuery: string;
@@ -97,7 +91,6 @@ interface GraphState {
   highlightedTrailNodeIds: string[];
   _trailAnimPlaying: boolean;
   setGraphIndex: (index: GraphIndex) => void;
-  setDomainFilter: (domain: string) => void;
   setTypeFilter: (type: string) => void;
   setTagTreeFilter: (path: string) => void;
   setSearchQuery: (query: string) => void;
@@ -143,7 +136,7 @@ function saveToStorage(trails: Trail[]) {
 
 export const useGraphStore = create<GraphState>((set, get) => ({
   graphIndex: null, loaded: false, error: null,
-  domainFilter: '', typeFilter: '', tagTreeFilter: '', searchQuery: '',
+  typeFilter: '', tagTreeFilter: '', searchQuery: '',
   selectedNodeId: null,
   focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
   browsePath: [],
@@ -157,7 +150,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   searchModalOpen: false,
 
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
-  setDomainFilter: (domain) => set({ domainFilter: domain }),
   setTypeFilter: (type) => set({ typeFilter: type }),
   setTagTreeFilter: (path) => set({ tagTreeFilter: path }),
   setSearchQuery: (query) => set({ searchQuery: query }),

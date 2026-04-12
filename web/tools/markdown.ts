@@ -11,7 +11,6 @@ export interface NoteMetadata {
   type: string;
   tags: string[];
   tagTree: string[]; // e.g. ['AI · 模型技术 › 推理模型 › o1模型']
-  domain: string;
   connections: Array<{ noteId: string; score: number; type: 'semantic' | 'explicit' }>;
   ai_summary?: string;
 }
@@ -98,6 +97,22 @@ const turndownService = new TurndownService({
 // Use custom escape to potentially be more lenient with valid markdown content
 turndownService.escape = (text) => text;
 
+// Rewrite image src paths from the original "files/<basename>" layout
+// to the per-note layout "images/<noteId>/<basename>" used by the converter.
+// turndown calls rule.replacement(node) for each <img> element.
+turndownService.addRule('imageSrc', {
+  filter: 'img',
+  replacement(_content: string, node: any) {
+    const src: string = node.getAttribute?.('src') ?? '';
+    if (!src) return '';
+    const extMatch = src.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+    if (!extMatch) return '';
+    // Strip any path prefix (e.g. "files/foo.jpeg" → "foo.jpeg")
+    const basename = path.basename(src);
+    return `![${basename}](images/${(this as any)['noteId']}/${basename})`;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // HTML entity decoding
 // ---------------------------------------------------------------------------
@@ -120,9 +135,12 @@ function stripTags(html: string): string {
 }
 
 /** Convert an HTML snippet to Markdown lines */
-function htmlToMd(html: string): string[] {
+function htmlToMd(html: string, noteId: string): string[] {
   if (!html) return [];
-  const md = turndownService.turndown(html);
+  // Create a per-call instance so the imageSrc rule can access the noteId
+  const svc = Object.assign(Object.create(Object.getPrototypeOf(turndownService)), turndownService);
+  (svc as any).noteId = noteId;
+  const md = svc.turndown(html);
   return md.split('\n');
 }
 
@@ -145,7 +163,8 @@ export function convertHtmlToMarkdown(
     .map(m => stripTags(m[1]).trim())
     .filter(t => t.length > 0 && !t.toLowerCase().includes('null'));
   // Known explicit note-type labels (from the filter sidebar UI)
-  const EXPLICIT_TYPES = new Set(['图片笔记', '录音笔记', '链接笔记', '录音卡笔记']);
+  // Must handle both exact labels and category prefixes like 'AI链接笔记' (links containing '链接笔记')
+  const EXPLICIT_TYPES = new Set(['图片笔记', '录音笔记', '链接笔记', '录音卡笔记', 'AI链接笔记']);
   const rawType = tags[0];
   const type = rawType && !EXPLICIT_TYPES.has(rawType) ? '文字笔记' : (rawType || '文字笔记');
   if (tags.length === 0) tags = [type];
@@ -193,7 +212,7 @@ export function convertHtmlToMarkdown(
     .trim();
 
   // Convert HTML to Markdown lines via turndown
-  const rawLines = htmlToMd(bodyWithoutAttachment);
+  const rawLines = htmlToMd(bodyWithoutAttachment, id);
 
   // Build body: attachment + non-empty lines, collapsed double blank lines
   const bodyLines: string[] = [];
@@ -216,12 +235,15 @@ export function convertHtmlToMarkdown(
   while (bodyLines.length > 0 && bodyLines[0].trim() === '') bodyLines.shift();
   while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1].trim() === '') bodyLines.pop();
 
-  // Image refs
+  // Image refs — rewrite paths to per-note images directory
   const imgMatches = [...html.matchAll(/src=["']([^"']+)["']/gi)];
   const imageRefs: string[] = [];
   for (const m of imgMatches) {
     const src = m[1];
-    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(src)) imageRefs.push(src);
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(src)) {
+      const basename = path.basename(src);
+      imageRefs.push(`images/${id}/${basename}`);
+    }
   }
 
   const inlineImages: string[] = [];
@@ -277,7 +299,7 @@ export function convertHtmlToMarkdown(
   const body = processedLines.join('\n');
 
   return {
-    frontmatter: { id, title, date, type, tags, tagTree, domain: '', connections: [] },
+    frontmatter: { id, title, date, type, tags, tagTree, connections: [] },
     body,
     imageRefs,
     _inlineImages: inlineImages,
@@ -294,7 +316,6 @@ export function buildMarkdownString(result: ConvertResult): string {
   if (fm.tagTree.length > 0) {
     lines.push(`tagTree: [${fm.tagTree.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
   }
-  if (fm.domain) lines.push(`domain: "${fm.domain}"`);
   if (fm.date) lines.push(`date: "${fm.date}"`);
   if (fm.connections.length > 0) {
     lines.push('connections:');
