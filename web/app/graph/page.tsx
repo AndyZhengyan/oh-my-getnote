@@ -92,7 +92,7 @@ export default function GraphPage() {
             </span>
             <div style={{ flex: 1 }} />
             <button
-              onClick={() => selectNode(null)}
+              onClick={() => { if (window.confirm('确定要清空当前轨迹吗？')) selectNode(null); }}
               title="重置"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',

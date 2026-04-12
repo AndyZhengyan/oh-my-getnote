@@ -1,12 +1,38 @@
 // web/components/graph/ForceGraph.tsx
 'use client';
 
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef, Component, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
 import { DOMAIN_COLORS } from '@/lib/constants';
+
+/** Catches canvas/event errors from react-force-graph-2d (e.g. after Turbopack HMR). */
+class ForceGraphErrorBoundary extends Component<{ children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('[ForceGraph] Caught error, re-mounting:', error.message);
+    // Force fgRef to be cleared so next mount starts fresh
+    this.props.fgRef.current = undefined;
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 14 }}>
+          图谱加载异常，刷新页面后重试
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -115,7 +141,7 @@ function getNodeVisual(level: NodeLevel) {
 
 export default function ForceGraph() {
   const {
-    graphIndex, domainFilter, typeFilter, searchQuery,
+    graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery,
     selectedNodeId, selectNode,
     focusedNodeId, focusedNeighborIds, focusMode,
     setCurrentScale, focusNode, setFocusMode,
@@ -140,8 +166,8 @@ export default function ForceGraph() {
   );
 
   const { nodes, links } = useMemo(
-    () => buildGraphData(graphIndex, domainFilter, typeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId),
-    [graphIndex, domainFilter, typeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId]
+    () => buildGraphData(graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId),
+    [graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId]
   );
 
   // Register reset and heat functions with the global event system
@@ -340,6 +366,7 @@ export default function ForceGraph() {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
+      <ForceGraphErrorBoundary fgRef={fgRef}>
       <ForceGraph2D
         ref={fgRef}
         graphData={{ nodes, links }}
@@ -512,6 +539,7 @@ export default function ForceGraph() {
         cooldownTicks={60}
         backgroundColor="#F8F9FB"
       />
+      </ForceGraphErrorBoundary>
 
       {/* Clear trail confirmation dialog */}
       {clearConfirmOpen && (
@@ -643,6 +671,7 @@ function buildGraphData(
   index: GraphIndex | null,
   domainFilter: string,
   typeFilter: string,
+  tagTreeFilter: string,
   searchQuery: string,
   levelMap: ReadonlyMap<string, NodeLevel>,
   selectedNodeId: string | null,
@@ -660,6 +689,7 @@ function buildGraphData(
   for (const [id, entry] of Object.entries(index.index)) {
     if (domainFilter && entry.domain !== domainFilter) continue;
     if (typeFilter && entry.type !== typeFilter) continue;
+    if (tagTreeFilter && !entry.tagTree.some(p => p.startsWith(tagTreeFilter))) continue;
     if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
     // Keep ghost nodes in the simulation if they pass global filters,
     // so their physical state persists even when dimmed.

@@ -3,11 +3,19 @@
 
 import { create } from 'zustand';
 
+export interface TagNode {
+  label: string;
+  count: number;
+  tagCount: number;
+  children?: TagNode[];
+}
+
 export interface NoteIndexEntry {
   path: string;
   domain: string;
   type: string;
   title: string;
+  tagTree: string[];
   bodyPreview?: string;
   createdAt?: string;
   tags?: string[];
@@ -25,6 +33,8 @@ export interface GraphIndex {
     total_connections: number;
     by_domain: Record<string, number>;
     by_type: Record<string, number>;
+    by_tagTree: Record<string, number>;
+    tagTree: TagNode[];
   };
 }
 
@@ -73,6 +83,7 @@ interface GraphState {
   error: string | null;
   domainFilter: string;
   typeFilter: string;
+  tagTreeFilter: string;
   searchQuery: string;
   selectedNodeId: string | null;
   focusedNodeId: string | null;
@@ -88,6 +99,7 @@ interface GraphState {
   setGraphIndex: (index: GraphIndex) => void;
   setDomainFilter: (domain: string) => void;
   setTypeFilter: (type: string) => void;
+  setTagTreeFilter: (path: string) => void;
   setSearchQuery: (query: string) => void;
   selectNode: (id: string | null) => void;
   focusNode: (id: string | null) => void;
@@ -131,7 +143,7 @@ function saveToStorage(trails: Trail[]) {
 
 export const useGraphStore = create<GraphState>((set, get) => ({
   graphIndex: null, loaded: false, error: null,
-  domainFilter: '', typeFilter: '', searchQuery: '',
+  domainFilter: '', typeFilter: '', tagTreeFilter: '', searchQuery: '',
   selectedNodeId: null,
   focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
   browsePath: [],
@@ -147,6 +159,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
   setDomainFilter: (domain) => set({ domainFilter: domain }),
   setTypeFilter: (type) => set({ typeFilter: type }),
+  setTagTreeFilter: (path) => set({ tagTreeFilter: path }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();

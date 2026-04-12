@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGraphStore, type TrailStep } from '@/stores/graphStore';
+import { useGraphStore, type TrailStep, type GraphIndex } from '@/stores/graphStore';
 import { Bookmark, Trash2, ChevronUp, ChevronLeft, ChevronRight, Search, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DOMAIN_COLORS } from '@/lib/constants';
@@ -17,11 +17,152 @@ function compareAlphaFirst(a: string, b: string): number {
   return a.localeCompare(b, 'zh-CN');
 }
 
+// ---------------------------------------------------------------------------
+// Tag tree node renderer
+// ---------------------------------------------------------------------------
+
+interface TagNode {
+  label: string;
+  count: number;
+  tagCount: number;
+  children?: TagNode[];
+}
+
+function TagNodeItem({
+  node,
+  depth,
+  parentPath,
+  tagTreeFilter,
+  tagTreeExpanded,
+  setTagTreeFilter,
+  setTagTreeExpanded,
+}: {
+  node: TagNode;
+  depth: number;
+  parentPath?: string;
+  tagTreeFilter: string;
+  tagTreeExpanded: Set<string>;
+  setTagTreeFilter: (f: string) => void;
+  setTagTreeExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
+  const fullPath = parentPath ? `${parentPath} › ${node.label}` : node.label;
+  const indent = depth === 0 ? 16 : 16 + depth * 16;
+  const hasChildren = !!node.children && node.children.length > 0;
+  const isExpanded = tagTreeExpanded.has(fullPath);
+  const isActive = tagTreeFilter === fullPath || (hasChildren && tagTreeFilter.startsWith(fullPath + ' › '));
+
+  function toggleExpand() {
+    setTagTreeExpanded(prev => {
+      const next = new Set(prev);
+      isExpanded ? next.delete(fullPath) : next.add(fullPath);
+      return next;
+    });
+  }
+
+  function handleClick() {
+    if (hasChildren) toggleExpand();
+    else setTagTreeFilter(isActive ? '' : fullPath);
+  }
+
+  const childNodes = hasChildren
+    ? [...node.children!].sort((a, b) => a.label === '其他' ? 1 : b.label === '其他' ? -1 : 0)
+    : [];
+
+  return (
+    <>
+      {/* Row */}
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        padding: depth === 0 ? '4px 12px 4px 16px' : `3px 12px 3px ${indent}px`,
+        gap: 4, cursor: hasChildren ? 'pointer' : 'default',
+        background: isActive ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+        borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+      }}
+        onClick={handleClick}
+        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
+        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      >
+        {hasChildren ? (
+          <ChevronUp size={11}
+            style={{
+              color: 'var(--text-muted)', flexShrink: 0,
+              transition: 'transform 0.2s',
+              transform: isExpanded ? 'rotate(0deg)' : 'rotate(180deg)',
+            }}
+          />
+        ) : (
+          <span style={{ width: 11, flexShrink: 0 }} />
+        )}
+        <span style={{
+          fontSize: 12,
+          color: isActive ? 'var(--accent)' : 'var(--text-secondary',
+          fontWeight: 400,
+          flex: 1, fontFamily: 'var(--font-ui)',
+        }}>
+          {node.label}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{node.tagCount}</span>
+      </div>
+
+      {/* Children */}
+      {hasChildren && isExpanded && childNodes.map(child => (
+        <TagNodeItem
+          key={child.label}
+          node={child}
+          depth={depth + 1}
+          parentPath={fullPath}
+          tagTreeFilter={tagTreeFilter}
+          tagTreeExpanded={tagTreeExpanded}
+          setTagTreeFilter={setTagTreeFilter}
+          setTagTreeExpanded={setTagTreeExpanded}
+        />
+      ))}
+    </>
+  );
+}
+
+// TagTreeList renders the L0 → L1 tree without using an IIFE in JSX
+function TagTreeList({
+  graphIndex,
+  tagTreeFilter,
+  tagTreeExpanded,
+  setTagTreeFilter,
+  setTagTreeExpanded,
+}: {
+  graphIndex: GraphIndex;
+  tagTreeFilter: string;
+  tagTreeExpanded: Set<string>;
+  setTagTreeFilter: (f: string) => void;
+  setTagTreeExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
+  const l0Node = graphIndex.stats.tagTree[0];
+  if (!l0Node) return null;
+  const sortedChildren = [...(l0Node.children ?? [])]
+    .sort((a, b) => a.label === '其他' ? 1 : b.label === '其他' ? -1 : 0);
+  return (
+    <>
+      {sortedChildren.map(l1Node => (
+        <TagNodeItem
+          key={l1Node.label}
+          node={l1Node}
+          depth={0}
+          parentPath=""
+          tagTreeFilter={tagTreeFilter}
+          tagTreeExpanded={tagTreeExpanded}
+          setTagTreeFilter={setTagTreeFilter}
+          setTagTreeExpanded={setTagTreeExpanded}
+        />
+      ))}
+    </>
+  );
+}
+
 export default function LeftNav() {
   const {
     graphIndex,
     domainFilter, setDomainFilter,
     typeFilter, setTypeFilter,
+    tagTreeFilter, setTagTreeFilter,
     browsePath,
     removeFromBrowsePath,
     savedTrails,
@@ -35,10 +176,14 @@ export default function LeftNav() {
   const [tagsCollapsed, setTagsCollapsed] = useState(false);
   const [typeCollapsed, setTypeCollapsed] = useState(false);
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [tagTreeExpanded, setTagTreeExpanded] = useState<Set<string>>(new Set());
 
   if (!graphIndex) return null;
 
   const types = Object.keys(graphIndex.stats.by_type);
+
+  // Total unique tags from L0 root's tagCount
+  const totalTags = graphIndex.stats.tagTree[0]?.tagCount ?? 0;
 
   const NAV_WIDTH = 280;
   const COLLAPSED_WIDTH = 48;
@@ -183,62 +328,10 @@ export default function LeftNav() {
 
           {/* Domain list */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
-            {/* Tags / 知识领域 section header */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 6px 16px', flexShrink: 0, gap: 6 }}>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
-                Tags
-              </span>
-              <button
-                onClick={() => setTagsCollapsed(c => !c)}
-                title={tagsCollapsed ? '展开' : '收起'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-              >
-                <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: tagsCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
-              </button>
-            </div>
-
-            {!tagsCollapsed && (
-              <>
-                <NavItem
-                  active={domainFilter === '' && typeFilter === ''}
-                  onClick={() => { setDomainFilter(''); setTypeFilter(''); }}
-                  color="#9CA3AF"
-                  count={graphIndex.stats.total_notes}
-                  label="全部笔记"
-                />
-
-                {graphIndex.domains
-                  .filter(d => d !== '其他')
-                  .sort((a, b) => (graphIndex.stats.by_domain[b] ?? 0) - (graphIndex.stats.by_domain[a] ?? 0))
-                  .map(domain => (
-                    <NavItem
-                      key={domain}
-                      active={domainFilter === domain}
-                      onClick={() => setDomainFilter(domainFilter === domain ? '' : domain)}
-                      color={DOMAIN_COLORS[domain] ?? '#9CA3AF'}
-                      count={graphIndex.stats.by_domain[domain] ?? 0}
-                      label={domain}
-                    />
-                  ))}
-
-                {graphIndex.domains.includes('其他') && (
-                  <NavItem
-                    active={domainFilter === '其他'}
-                    onClick={() => setDomainFilter(domainFilter === '其他' ? '' : '其他')}
-                    color={DOMAIN_COLORS['其他'] ?? '#9CA3AF'}
-                    count={graphIndex.stats.by_domain['其他'] ?? 0}
-                    label="其他"
-                  />
-                )}
-              </>
-            )}
-
             {types.length > 0 && (
               <>
                 {/* 笔记类型 section header */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 6px 16px', flexShrink: 0, gap: 6 }}>
                   <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
                     笔记类型
                   </span>
@@ -255,6 +348,15 @@ export default function LeftNav() {
 
                 {!typeCollapsed && (
                   <>
+                    {/* 全部笔记 — resets all filters */}
+                    <NavItem
+                      active={!typeFilter}
+                      onClick={() => { setTypeFilter(''); setTagTreeFilter(''); }}
+                      color="#9CA3AF"
+                      count={graphIndex.stats.total_notes}
+                      label="全部笔记"
+                    />
+
                     {types
                       .filter(t => t !== '其他')
                       .sort((a, b) => (graphIndex.stats.by_type[b] ?? 0) - (graphIndex.stats.by_type[a] ?? 0))
@@ -282,6 +384,43 @@ export default function LeftNav() {
                 )}
               </>
             )}
+
+            {/* Tags section header */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '12px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, flex: 1 }}>
+                Tags
+              </span>
+              <button
+                onClick={() => setTagsCollapsed(c => !c)}
+                title={tagsCollapsed ? '展开' : '收起'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+              >
+                <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: tagsCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+              </button>
+            </div>
+
+            {!tagsCollapsed && (
+              <>
+                {/* 全部笔记 — resets all filters */}
+                <NavItem
+                  active={!tagTreeFilter}
+                  onClick={() => { setTagTreeFilter(''); setTypeFilter(''); }}
+                  color="#9CA3AF"
+                  count={totalTags}
+                  label="全部标签"
+                />
+
+                <TagTreeList
+                  graphIndex={graphIndex}
+                  tagTreeFilter={tagTreeFilter}
+                  tagTreeExpanded={tagTreeExpanded}
+                  setTagTreeFilter={setTagTreeFilter}
+                  setTagTreeExpanded={setTagTreeExpanded}
+                />
+              </>
+            )}
           </div>
 
           {/* Bottom: 探索路径 + 历史轨迹 */}
@@ -298,8 +437,8 @@ export default function LeftNav() {
               overflow: 'hidden',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 6px 16px', flexShrink: 0, gap: 6 }}>
-                <Bookmark size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--accent)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Bookmark size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   探索路径 ({browsePath.length})
                 </span>
                 <button
@@ -317,7 +456,7 @@ export default function LeftNav() {
               </div>
 
               {!trailCollapsed && (
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                   {browsePath.length === 0 && (
                     <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
                       点击图谱节点开始追踪
@@ -386,7 +525,7 @@ export default function LeftNav() {
               </div>
 
               {!historyCollapsed && (
-                <div style={{ padding: '2px 0 6px' }}>
+                <div style={{ padding: '2px 0 6px', maxHeight: 80, overflowY: 'auto' }}>
                   {savedTrails.length === 0 && (
                     <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
                       暂无
