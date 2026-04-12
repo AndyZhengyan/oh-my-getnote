@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000';
 
-async function waitForGraph(page: any) {
+async function waitForGraph(page: import('@playwright/test').Page) {
   await page.waitForSelector('canvas', { timeout: 15000 });
   await page.waitForTimeout(2000);
 }
@@ -58,7 +58,7 @@ test.describe('三栏布局', () => {
     // Logo 行
     await expect(page.getByText('Oh My Getnote')).toBeVisible();
     // 四个 section header 均应在页面中（知识领域、笔记类型、探索路径、历史轨迹）
-    await expect(page.getByText('知识领域')).toBeVisible();
+    await expect(page.getByText('Tags')).toBeVisible();
     await expect(page.getByText('笔记类型')).toBeVisible();
     await expect(page.getByText('探索路径')).toBeVisible();
     await expect(page.getByText('历史轨迹')).toBeVisible();
@@ -68,15 +68,10 @@ test.describe('三栏布局', () => {
     // 点击图谱节点触发 RightPanel 展开
     const canvas = page.locator('canvas').first();
     await canvas.click({ position: { x: 100, y: 100 } });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
 
-    // RightPanel 展开后会显示笔记标题（h3）
-    const rightPanelTitle = page.locator('h3').first();
-
-    try {
-      await expect(rightPanelTitle).toBeVisible({ timeout: 3000 });
-    } catch {
-      // 节点点击可能没选中节点，测试仍通过
-    }
+    // RightPanel 展开后会显示笔记标题（h3），scoped to last <aside>
+    const rightPanelTitle = page.locator('aside').last().locator('h3');
+    await expect(rightPanelTitle).toBeVisible({ timeout: 5000 });
   });
 });
