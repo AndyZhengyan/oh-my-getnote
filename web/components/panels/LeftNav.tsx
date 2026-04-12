@@ -31,6 +31,7 @@ interface TagNode {
 function TagNodeItem({
   node,
   depth,
+  parentPath,
   tagTreeFilter,
   tagTreeExpanded,
   setTagTreeFilter,
@@ -38,28 +39,29 @@ function TagNodeItem({
 }: {
   node: TagNode;
   depth: number;
+  parentPath?: string;
   tagTreeFilter: string;
   tagTreeExpanded: Set<string>;
   setTagTreeFilter: (f: string) => void;
   setTagTreeExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
 }) {
-  const path = node.label;
+  const fullPath = parentPath ? `${parentPath} › ${node.label}` : node.label;
   const indent = depth === 0 ? 16 : 16 + depth * 16;
   const hasChildren = !!node.children && node.children.length > 0;
-  const isExpanded = tagTreeExpanded.has(path);
-  const isActive = tagTreeFilter === path;
+  const isExpanded = tagTreeExpanded.has(fullPath);
+  const isActive = tagTreeFilter === fullPath || (hasChildren && tagTreeFilter.startsWith(fullPath + ' › '));
 
   function toggleExpand() {
     setTagTreeExpanded(prev => {
       const next = new Set(prev);
-      isExpanded ? next.delete(path) : next.add(path);
+      isExpanded ? next.delete(fullPath) : next.add(fullPath);
       return next;
     });
   }
 
   function handleClick() {
     if (hasChildren) toggleExpand();
-    else setTagTreeFilter(isActive ? '' : path);
+    else setTagTreeFilter(isActive ? '' : fullPath);
   }
 
   const childNodes = hasChildren
@@ -73,10 +75,12 @@ function TagNodeItem({
         display: 'flex', alignItems: 'center',
         padding: depth === 0 ? '4px 12px 4px 16px' : `3px 12px 3px ${indent}px`,
         gap: 4, cursor: hasChildren ? 'pointer' : 'default',
+        background: isActive ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+        borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
       }}
         onClick={handleClick}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
+        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >
         {hasChildren ? (
           <ChevronUp size={11}
@@ -91,7 +95,7 @@ function TagNodeItem({
         )}
         <span style={{
           fontSize: 12,
-          color: 'var(--text-secondary)',
+          color: isActive ? 'var(--accent)' : 'var(--text-secondary',
           fontWeight: 400,
           flex: 1, fontFamily: 'var(--font-ui)',
         }}>
@@ -106,6 +110,7 @@ function TagNodeItem({
           key={child.label}
           node={child}
           depth={depth + 1}
+          parentPath={fullPath}
           tagTreeFilter={tagTreeFilter}
           tagTreeExpanded={tagTreeExpanded}
           setTagTreeFilter={setTagTreeFilter}
@@ -141,6 +146,7 @@ function TagTreeList({
           key={l1Node.label}
           node={l1Node}
           depth={0}
+          parentPath=""
           tagTreeFilter={tagTreeFilter}
           tagTreeExpanded={tagTreeExpanded}
           setTagTreeFilter={setTagTreeFilter}
