@@ -23,7 +23,7 @@ import { embedText } from '../lib/embedding.js';
 // Tag scanning — AI-powered tree generation
 // ---------------------------------------------------------------------------
 
-const FIXED_TYPES = ['图片笔记', '录音笔记', '链接笔记', '录音卡笔记', '文字笔记'];
+const FIXED_TYPES = ['图片笔记', '录音笔记', '链接笔记', '录音卡笔记', '文字笔记', 'AI链接笔记'];
 
 function extractTags(html: string): string[] {
   const matches = [...html.matchAll(/<span class=["']tag["'][^>]*>([\s\S]*?)<\/span>/gi)];
@@ -205,23 +205,6 @@ interface Note {
   filename: string;
 }
 
-export function inferDomain(tags: string[]): string {
-  const tagStr = tags.join('');
-  if (tagStr.includes('LLM') || tagStr.includes('GPT')) {
-    return 'AI 核心技术与模型';
-  }
-  if (tagStr.includes('智能体') || tagStr.includes('Agent')) {
-    return 'AI 智能体与工程';
-  }
-  if (tagStr.includes('管理') || tagStr.includes('职场') || tagStr.includes('成长')) {
-    return '管理、职场与个人成长';
-  }
-  if (tagStr.includes('AI')) {
-    return 'AI 核心技术与模型';
-  }
-  return '其他';
-}
-
 function copyImages(
   html: string,
   sourceNotesDir: string,
@@ -316,9 +299,6 @@ async function main() {
     const result = convertHtmlToMarkdown(html, note.id);
     if (!result) continue;
 
-    // 推断领域
-    result.frontmatter.domain = inferDomain(note.tags);
-
     // 幂等性：写入 Markdown 时，将 frontmatter 加入 metadataMap（无论文件是否已存在）
     metadataMap.set(note.id, result.frontmatter);
 
@@ -371,7 +351,6 @@ async function main() {
   const entries = Array.from(metadataMap.entries()).map(([id, meta]) => ({
     id,
     path: 'notes/' + meta.type + '/' + id + '.md',
-    domain: meta.domain,
     type: meta.type,
     title: meta.title,
     tagTree: meta.tagTree,
@@ -402,7 +381,6 @@ async function main() {
   console.log('✅ 完成！');
   console.log('   笔记：' + graphIndex.stats.total_notes + ' 篇');
   console.log('   关联：' + graphIndex.stats.total_connections + ' 条');
-  console.log('   领域：' + graphIndex.domains.join(', '));
 }
 
 // Guard: only run main() when executed directly as CLI

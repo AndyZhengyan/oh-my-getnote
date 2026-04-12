@@ -116,11 +116,12 @@ describe('convertHtmlToMarkdown', () => {
     expect(subIdx).toBeGreaterThan(pointIdx);
   });
 
-  it('inlines image refs into body before main content', () => {
-    const html = `<html><body><h1>T</h1><hr><div class="attachment"><img src="images/test.jpg"/></div><p>正文</p></body></html>`;
+  it('inlines image refs into body before main content with rewritten per-note paths', () => {
+    const html = `<html><body><h1>T</h1><hr><div class="attachment"><img src="files/test.jpg"/></div><p>正文</p></body></html>`;
     const result = convertHtmlToMarkdown(html, 'test-id');
-    expect(result!.body).toContain('![](images/test.jpg)');
-    const imgIdx = result!.body.indexOf('![](images/test.jpg)');
+    // Image path should be rewritten from "files/test.jpg" → "images/test-id/test.jpg"
+    expect(result!.body).toContain('![](images/test-id/test.jpg)');
+    const imgIdx = result!.body.indexOf('![](images/test-id/test.jpg)');
     const bodyIdx = result!.body.indexOf('正文');
     expect(imgIdx).toBeLessThan(bodyIdx);
   });

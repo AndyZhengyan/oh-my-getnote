@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import { useGraphStore, GraphIndex } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
-import { DOMAIN_COLORS } from '@/lib/constants';
 
 /** Catches canvas/event errors from react-force-graph-2d (e.g. after Turbopack HMR). */
 class ForceGraphErrorBoundary extends Component<{ children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }, { hasError: boolean }> {
@@ -48,7 +47,6 @@ type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral' | 'ghost' | 'tra
 interface GraphNode {
   id: string;
   title: string;
-  domain: string;
   type: string;
   connections: number;
   snippet?: string;
@@ -61,7 +59,6 @@ interface TooltipState {
   x: number;
   y: number;
   title: string;
-  domain: string;
   snippet: string;
 }
 
@@ -125,6 +122,12 @@ export function buildLevelMap(
     if (!result.has(id)) result.set(id, 'ghost');
   }
 
+  // Restore all browsePath nodes to 'trajectory' so they remain visible
+  // even when BFS from the selected seed doesn't reach them.
+  // This keeps the trajectory intact (purple edges + amber circles) regardless
+  // of graph connectivity to the newly-selected node.
+  for (const id of browsePath) result.set(id, 'trajectory');
+
   return result;
 }
 
@@ -141,7 +144,7 @@ function getNodeVisual(level: NodeLevel) {
 
 export default function ForceGraph() {
   const {
-    graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery,
+    graphIndex, typeFilter, tagTreeFilter, searchQuery,
     selectedNodeId, selectNode,
     focusedNodeId, focusedNeighborIds, focusMode,
     setCurrentScale, focusNode, setFocusMode,
@@ -155,6 +158,10 @@ export default function ForceGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<NodeObject, LinkObject>>(undefined);
   const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks whether a new node was just selected so the auto-fit effect (nodes[])
+  // skips its animated zoom and leaves centering/zooming to the [selectedNodeId] effect.
+  const skipAutoFitZoomRef = useRef(false);
+  const autoFitSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
@@ -166,8 +173,8 @@ export default function ForceGraph() {
   );
 
   const { nodes, links } = useMemo(
-    () => buildGraphData(graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId),
-    [graphIndex, domainFilter, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId]
+    () => buildGraphData(graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId),
+    [graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId]
   );
 
   // Register reset and heat functions with the global event system
@@ -197,11 +204,14 @@ export default function ForceGraph() {
       // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
+        const skipZoom = skipAutoFitZoomRef.current;
         if (nodes.length <= 4) {
           // Few nodes: we've set fx/fy to 0 in buildGraphData.
           // Center the view at node origin (0,0) and use custom zoom.
           fgRef.current.centerAt(0, 0, 400);
-          fgRef.current.zoom(nodes.length === 1 ? 1.5 : 1.0, 400);
+          if (!skipZoom) {
+            fgRef.current.zoom(nodes.length === 1 ? 1.5 : 1.0, 400);
+          }
           // Re-clear cache so they don't jump back to old positions on next filter
           if ((globalThis as any)._nodePosCache) {
             nodes.forEach(n => (globalThis as any)._nodePosCache.delete(n.id));
@@ -209,9 +219,11 @@ export default function ForceGraph() {
         } else {
           // Multi-node: use standard zoomToFit with tighter padding.
           fgRef.current.centerAt(0, 0, 1);
-          fgRef.current.zoomToFit(400, 50);
-          fgRef.current.d3ReheatSimulation();
-          fgRef.current.resumeAnimation();
+          if (!skipZoom) {
+            fgRef.current.zoomToFit(400, 50);
+            fgRef.current.d3ReheatSimulation();
+            fgRef.current.resumeAnimation();
+          }
         }
       }, 100);
     }
@@ -235,9 +247,16 @@ export default function ForceGraph() {
     }
   }, [selectedNodeId, rightPanelOpen]);
 
-  // When a node is selected, zoom in to show its neighborhood (≈20-25 nodes, readable titles)
+  // When a node is selected, zoom in to show its neighborhood (≈20-25 nodes, readable titles).
+  // Also sets skipAutoFitZoomRef so the [nodes] auto-fit effect defers to this centering.
   useEffect(() => {
     if (!selectedNodeId || !fgRef.current) return;
+    // Signal the [nodes] auto-fit effect to skip its animated zoom, then clear
+    // the flag after the auto-fit timeout fires so subsequent filter changes still auto-fit.
+    skipAutoFitZoomRef.current = true;
+    if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
+    autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
+
     const nodePos = (globalThis as any)._nodePosCache?.get(selectedNodeId);
     if (!nodePos || nodePos.x == null) return;
     // Center on selected node with tighter zoom (no zoomToFit — just center + zoom in)
@@ -311,7 +330,6 @@ export default function ForceGraph() {
           x: screenX,
           y: screenY,
           title: node.title,
-          domain: node.domain,
           snippet: node.connections > 0 ? `${node.connections} 条关联` : '暂无关联',
         };
       }
@@ -407,7 +425,7 @@ export default function ForceGraph() {
           const visual = getNodeVisual(level);
           const maxConn = 10;
           const r = (visual.rBase + Math.min(n.connections / 2, maxConn)) * visual.rScale;
-          const domainColor = DOMAIN_COLORS[n.domain] ?? '#9CA3AF';
+          const domainColor = '#9CA3AF';
 
           ctx.globalAlpha = visual.alpha;
 
@@ -677,9 +695,6 @@ export default function ForceGraph() {
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
             {tooltip.title}
           </div>
-          <div style={{ fontSize: 11, color: DOMAIN_COLORS[tooltip.domain] ?? 'var(--accent)', marginBottom: 4 }}>
-            {tooltip.domain}
-          </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {tooltip.snippet}
           </div>
@@ -691,7 +706,6 @@ export default function ForceGraph() {
 
 function buildGraphData(
   index: GraphIndex | null,
-  domainFilter: string,
   typeFilter: string,
   tagTreeFilter: string,
   searchQuery: string,
@@ -709,7 +723,6 @@ function buildGraphData(
   // Active set: nodes that pass filters
   const activeIds = new Set<string>();
   for (const [id, entry] of Object.entries(index.index)) {
-    if (domainFilter && entry.domain !== domainFilter) continue;
     if (typeFilter && entry.type !== typeFilter) continue;
     if (tagTreeFilter && !entry.tagTree.some(p => p.startsWith(tagTreeFilter))) continue;
     if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
@@ -732,7 +745,7 @@ function buildGraphData(
       const cached = (globalThis as any)._nodePosCache?.get(id);
 
       const node: any = {
-        id, title: entry.title, domain: entry.domain, type: entry.type,
+        id, title: entry.title, type: entry.type,
         connections: entry.connections.length, snippet: entry.bodyPreview ?? '',
         ...cached
       };

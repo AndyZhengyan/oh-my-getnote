@@ -20,18 +20,17 @@ function fixMarkdownLineBreaks(body: string): string {
 import { useState, useEffect, useCallback } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
-import { X, Sparkles, Loader2 } from 'lucide-react';
+import { X, Sparkles, Loader2, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
-import { DOMAIN_COLORS } from '@/lib/constants';
 
 // 链路感知推荐算法
 function getPathAwareRecommendations(
   browsePath: string[],
   selectedNodeId: string | null,
-  graphIndex: { index: Record<string, { connections: Array<{ noteId: string; score: number }>; title?: string; domain?: string }> } | null,
-): Array<{ noteId: string; score: number; title: string; domain: string }> {
+  graphIndex: { index: Record<string, { connections: Array<{ noteId: string; score: number }>; title?: string }> } | null,
+): Array<{ noteId: string; score: number; title: string }> {
   if (!graphIndex) return [];
 
   if (browsePath.length === 0) {
@@ -42,7 +41,6 @@ function getPathAwareRecommendations(
       noteId: c.noteId,
       score: c.score,
       title: graphIndex.index[c.noteId]?.title ?? '',
-      domain: graphIndex.index[c.noteId]?.domain ?? '',
     }));
   }
 
@@ -70,12 +68,11 @@ function getPathAwareRecommendations(
       noteId,
       score: rawScore / browsePath.length,
       title: graphIndex.index[noteId]?.title ?? '',
-      domain: graphIndex.index[noteId]?.domain ?? '',
     }));
 }
 
 export default function RightPanel() {
-  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath } = useGraphStore();
+  const { selectedNodeId, graphIndex, selectNode, focusMode, setFocusMode, browsePath, saveTrail } = useGraphStore();
   const [note, setNote] = useState<NoteContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -168,6 +165,12 @@ export default function RightPanel() {
           <button onClick={handleAISummary} disabled={aiLoading} title="AI 摘要" style={{ background: 'none', border: 'none', color: aiLoading ? 'var(--accent)' : 'var(--text-muted)', cursor: aiLoading ? 'default' : 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
             {aiLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={16} />}
           </button>
+          <button onClick={() => {
+            const name = window.prompt('输入轨迹名称：');
+            if (name) saveTrail(name);
+          }} title="保存轨迹" disabled={!browsePath?.length} style={{ background: 'none', border: 'none', color: browsePath?.length ? 'var(--text-muted)' : 'var(--border)', cursor: browsePath?.length ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center' }}>
+            <Save size={16} />
+          </button>
           <button onClick={() => selectNode(null)} title="收起" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px', borderRadius: 'var(--radius-sm)' }}>
             <X size={16} />
           </button>
@@ -176,7 +179,7 @@ export default function RightPanel() {
 
         {/* Meta */}
         <div style={{ padding: '10px 18px 8px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{entry.type} · {entry.domain}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{entry.type}</div>
           {note?.frontmatter.tags && note.frontmatter.tags.length > 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {note.frontmatter.tags.slice(1).map(tag => (
@@ -250,7 +253,7 @@ export default function RightPanel() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 8,
-                      borderLeft: `2px solid ${DOMAIN_COLORS[rec.domain] ?? '#9CA3AF'}`,
+                      borderLeft: '2px solid var(--accent)',
                       fontFamily: 'var(--font-ui)',
                       transition: 'background 0.12s',
                     }}

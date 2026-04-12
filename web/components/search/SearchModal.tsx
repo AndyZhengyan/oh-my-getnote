@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGraphStore } from '@/stores/graphStore';
 import { Search, X } from 'lucide-react';
@@ -9,10 +10,9 @@ import { Search, X } from 'lucide-react';
 export default function SearchModal() {
   const { graphIndex, searchModalOpen, setSearchModalOpen, selectNode, setRightPanelOpen } = useGraphStore();
   const [query, setQuery] = useState('');
-  const [domainFilter, setDomainFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [results, setResults] = useState<Array<{
-    id: string; title: string; domain: string; type: string;
+    id: string; title: string; type: string;
     bodyPreview: string; createdAt?: string; tags?: string[];
   }>>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,7 +25,6 @@ export default function SearchModal() {
     } else {
       setQuery('');
       setResults([]);
-      setDomainFilter('');
       setTypeFilter('');
     }
   }, [searchModalOpen]);
@@ -41,7 +40,6 @@ export default function SearchModal() {
       const matched: typeof results = [];
 
       for (const [id, entry] of Object.entries(graphIndex.index)) {
-        if (domainFilter && entry.domain !== domainFilter) continue;
         if (typeFilter && entry.type !== typeFilter) continue;
         if (
           entry.title.toLowerCase().includes(q) ||
@@ -51,7 +49,6 @@ export default function SearchModal() {
           matched.push({
             id,
             title: entry.title,
-            domain: entry.domain ?? '',
             type: entry.type ?? '',
             bodyPreview: entry.bodyPreview ?? '',
             createdAt: entry.createdAt,
@@ -62,7 +59,7 @@ export default function SearchModal() {
       }
       setResults(matched);
     }, 300);
-  }, [query, domainFilter, typeFilter, graphIndex]);
+  }, [query, typeFilter, graphIndex]);
 
   const handleSelect = (noteId: string) => {
     selectNode(noteId);
@@ -72,63 +69,74 @@ export default function SearchModal() {
 
   const handleClose = () => setSearchModalOpen(false);
 
-  const domains = graphIndex?.domains ?? [];
   const types = Object.keys(graphIndex?.stats.by_type ?? {});
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  const modalContent = (
     <AnimatePresence>
       {searchModalOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — 全局模糊遮罩 */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={handleClose}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 500 }}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.35)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              zIndex: 500,
+            }}
           />
-          {/* Modal */}
+          {/* Modal — 页面中上居中，大尺寸 */}
           <motion.div
-            initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }}
+            initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             style={{
-              position: 'fixed', top: 80, left: '50%',
+              position: 'fixed', top: '18%', left: '50%',
               transform: 'translateX(-50%)',
-              width: 420, maxHeight: 'calc(100vh - 120px)',
-              background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 510,
+              width: 640,
+              maxHeight: '72vh',
+              background: 'rgba(255,255,255,0.98)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              borderRadius: 14,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)',
+              zIndex: 510,
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}
           >
             {/* Search bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-              <Search size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
+              <Search size={17} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
               <input
                 ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="搜索标题、内容、标签…" autoFocus
-                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--text-primary)', background: 'transparent' }}
+                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, fontFamily: 'var(--font-ui)', color: 'var(--text-primary)', background: 'transparent' }}
                 onKeyDown={e => { if (e.key === 'Escape') handleClose(); }}
               />
-              {(domainFilter || typeFilter) && (
-                <button onClick={() => { setDomainFilter(''); setTypeFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>
+              {typeFilter && (
+                <button onClick={() => { setTypeFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 12, padding: '2px 8px', borderRadius: 6 }}>
                   清除
                 </button>
               )}
-              <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 4 }}>
-                <X size={15} />
+              <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 6 }}>
+                <X size={17} />
               </button>
             </div>
 
             {/* Filter chips */}
-            {domains.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
-                {domains.slice(0, 6).map(d => (
-                  <button key={d} onClick={() => setDomainFilter(domainFilter === d ? '' : d)}
-                    style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontFamily: 'var(--font-ui)', border: '1px solid', cursor: 'pointer', transition: 'all 0.12s',
-                      borderColor: domainFilter === d ? 'var(--accent)' : 'var(--border)',
-                      background: domainFilter === d ? 'var(--accent-light)' : 'transparent',
-                      color: domainFilter === d ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                    {d}
+            {types.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, padding: '6px 18px 10px', flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                {types.slice(0, 8).map(t => (
+                  <button key={t} onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
+                    style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'var(--font-ui)', border: '1px solid', cursor: 'pointer', transition: 'all 0.12s',
+                      borderColor: typeFilter === t ? 'var(--accent)' : 'rgba(0,0,0,0.1)',
+                      background: typeFilter === t ? 'var(--accent-light)' : 'rgba(0,0,0,0.03)',
+                      color: typeFilter === t ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                    {t}
                   </button>
                 ))}
               </div>
@@ -137,26 +145,26 @@ export default function SearchModal() {
             {/* Results */}
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {query && results.length === 0 && (
-                <div style={{ padding: '24px 14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>没有找到匹配的笔记</div>
+                <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>没有找到匹配的笔记</div>
               )}
               {!query && (
-                <div style={{ padding: '24px 14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>输入关键词开始搜索</div>
+                <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>输入关键词开始搜索</div>
               )}
               {results.map(note => (
                 <div key={note.id} onClick={() => handleSelect(note.id)}
-                  style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.12s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-muted)'; }}
+                  style={{ padding: '14px 18px', borderBottom: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'background 0.12s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.03)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.3 }}>
-                    {note.title.length > 50 ? note.title.slice(0, 49) + '…' : note.title}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 5, lineHeight: 1.4 }}>
+                    {note.title.length > 60 ? note.title.slice(0, 59) + '…' : note.title}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                    {[note.domain, note.type].filter(Boolean).join(' · ')}
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 5 }}>
+                    {note.type}
                     {note.createdAt ? ` · ${note.createdAt}` : ''}
                   </div>
                   {note.bodyPreview && (
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {note.bodyPreview}
                     </div>
                   )}
@@ -168,4 +176,6 @@ export default function SearchModal() {
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }

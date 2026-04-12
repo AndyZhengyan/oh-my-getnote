@@ -108,18 +108,18 @@ export default function GraphPage() {
           </div>
         </div>
 
-        {/* RightPanel — flex controlled width */}
-        <div style={{
-          flexShrink: 0,
-          flex: rightPanelOpen ? 1.2 : 0,
-          width: rightPanelOpen ? 'auto' : 0,
-          maxWidth: rightPanelOpen ? 800 : 0,
-          transition: 'flex 0.25s ease-out, width 0.25s ease-out, maxWidth 0.25s ease-out',
-          overflow: 'hidden',
-          display: 'flex',
-        }}>
-          {rightPanelOpen && <RightPanel />}
-        </div>
+        {/* RightPanel — only rendered when open, so center takes all remaining space */}
+        {rightPanelOpen && (
+          <div style={{
+            flexShrink: 0,
+            flex: 1.2,
+            maxWidth: 800,
+            overflow: 'hidden',
+            display: 'flex',
+          }}>
+            <RightPanel />
+          </div>
+        )}
       </div>
       <SearchModal />
     </main>
