@@ -1,5 +1,8 @@
 // tools/markdown.ts
 import TurndownService from 'turndown';
+import * as fs from 'fs';
+import * as path from 'path';
+import yaml from 'js-yaml';
 
 export interface NoteMetadata {
   id: string;
@@ -7,9 +10,74 @@ export interface NoteMetadata {
   date: string;
   type: string;
   tags: string[];
+  tagTree: string[]; // e.g. ['AI · 模型技术 › 推理模型 › o1模型']
   domain: string;
   connections: Array<{ noteId: string; score: number; type: 'semantic' | 'explicit' }>;
   ai_summary?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Tag tree loader — reads web/config/tag-tree.yaml
+// Structure:
+//   types: [图片笔记, 录音笔记, ...]          (fixed, not used here)
+//   tags:
+// ---------------------------------------------------------------------------
+// Config format (notes/tag-tree.yaml):
+//   types: [图片笔记, 录音笔记, ...]
+//   tree:
+//     AI · 模型技术:
+//       模型基础: [大语言模型, 强化学习]
+//       推理模型: [o1模型, DeepSeek - R1]
+//     AI · 人物: [Sam Altman, Andrej Karpathy]
+//     其他: null
+// ---------------------------------------------------------------------------
+
+let _tagPathMap: Map<string, string[]> | null = null;
+
+function loadTagPaths(): Map<string, string[]> {
+  if (_tagPathMap) return _tagPathMap;
+
+  _tagPathMap = new Map();
+  const configPath = path.resolve('notes/tag-tree.yaml');
+
+  if (!fs.existsSync(configPath)) return _tagPathMap;
+
+  const doc = yaml.load(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+  const tree = doc.tree as Record<string, string | Record<string, string[]> | null> ?? {};
+
+  for (const [l1, children] of Object.entries(tree)) {
+    if (children === null) {
+      _tagPathMap.set(l1, [l1]);
+      continue;
+    }
+    if (Array.isArray(children)) {
+      for (const tag of children) _tagPathMap.set(tag, [l1, tag]);
+      continue;
+    }
+    for (const [l2, l3tags] of Object.entries(children)) {
+      for (const tag of l3tags) _tagPathMap.set(tag, [l1, l2, tag]);
+    }
+  }
+
+  return _tagPathMap;
+}
+
+/**
+ * Map a raw tag to its tree path string (e.g. "AI · 模型技术 › 推理模型 › o1模型").
+ * Unknown tags fall under "其他 › <tag>".
+ */
+function tagToPath(rawTag: string): string[] {
+  const tagMap = loadTagPaths();
+  return tagMap.get(rawTag) ?? ['其他', rawTag];
+}
+
+/** Normalize raw tags into sorted tree path strings. */
+export function normalizeTags(rawTags: string[]): { tags: string[]; tagTree: string[] } {
+  const pathSet = new Set<string>();
+  for (const raw of rawTags) {
+    pathSet.add(tagToPath(raw).join(' › '));
+  }
+  return { tags: rawTags, tagTree: Array.from(pathSet).sort() };
 }
 
 export interface ConvertResult {
@@ -76,8 +144,14 @@ export function convertHtmlToMarkdown(
   let tags: string[] = tagMatches
     .map(m => stripTags(m[1]).trim())
     .filter(t => t.length > 0 && !t.toLowerCase().includes('null'));
-  const type = tags[0] || '其他';
+  // Known explicit note-type labels (from the filter sidebar UI)
+  const EXPLICIT_TYPES = new Set(['图片笔记', '录音笔记', '链接笔记', '录音卡笔记']);
+  const rawType = tags[0];
+  const type = rawType && !EXPLICIT_TYPES.has(rawType) ? '文字笔记' : (rawType || '文字笔记');
   if (tags.length === 0) tags = [type];
+
+  // Normalize tags into tree paths
+  const { tags: rawTags, tagTree } = normalizeTags(tags);
 
   // Date
   let date = '';
@@ -203,7 +277,7 @@ export function convertHtmlToMarkdown(
   const body = processedLines.join('\n');
 
   return {
-    frontmatter: { id, title, date, type, tags, domain: '', connections: [] },
+    frontmatter: { id, title, date, type, tags, tagTree, domain: '', connections: [] },
     body,
     imageRefs,
     _inlineImages: inlineImages,
@@ -217,6 +291,9 @@ export function buildMarkdownString(result: ConvertResult): string {
   lines.push(`title: "${fm.title.replace(/"/g, '\\"')}"`);
   lines.push(`type: "${fm.type}"`);
   lines.push(`tags: [${fm.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
+  if (fm.tagTree.length > 0) {
+    lines.push(`tagTree: [${fm.tagTree.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`);
+  }
   if (fm.domain) lines.push(`domain: "${fm.domain}"`);
   if (fm.date) lines.push(`date: "${fm.date}"`);
   if (fm.connections.length > 0) {
