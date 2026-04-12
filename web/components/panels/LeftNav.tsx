@@ -97,8 +97,8 @@ export default function LeftNav() {
           paddingTop: 8,
         }}>
           {/* Logo */}
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 14 }}>
-            📚
+          <div style={{ marginBottom: 14 }}>
+            <img src="/images/logo.png" alt="Oh My Getnote" style={{ width: 32, height: 32, display: 'block' }} />
           </div>
           {/* Search icon */}
           <button
@@ -157,7 +157,7 @@ export default function LeftNav() {
             borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>📚</span>
+            <img src="/images/logo.png" alt="Oh My Getnote" style={{ width: 28, height: 28, display: 'block', flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-ui)' }}>
               Oh My Getnote
             </span>
