@@ -27,7 +27,9 @@
 
 ## 🎬 演示视频
 
-[![演示视频](./docs/demo.png)](./docs/demo.mp4)
+![演示视频](./docs/demo.gif)
+
+> 📥 [高清视频下载 (MP4)](./docs/demo.mp4)
 
 ## ✨ 核心能力
 
