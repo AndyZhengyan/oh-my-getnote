@@ -7,13 +7,13 @@ import { RotateCcw } from 'lucide-react';
 export default function Toolbar() {
   const {
     graphIndex,
-    selectNode,
+    clearSelection,
     highlightedTrailId,
     stopTrailPlayback,
   } = useGraphStore();
 
   const handleReset = () => {
-    selectNode(null);
+    clearSelection();
     triggerGraphReset();
   };
 

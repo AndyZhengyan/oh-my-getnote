@@ -152,7 +152,7 @@ export default function ForceGraph() {
     browsePath,
     clearBrowsePath,
     clearRecommendedPaths,
-    rightPanelOpen,
+    clearSelection,
   } = useGraphStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -173,8 +173,8 @@ export default function ForceGraph() {
   );
 
   const { nodes, links } = useMemo(
-    () => buildGraphData(graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId),
-    [graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId]
+    () => buildGraphData(graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId, browsePath),
+    [graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId, browsePath]
   );
 
   // Register reset and heat functions with the global event system
@@ -205,6 +205,13 @@ export default function ForceGraph() {
       setTimeout(() => {
         if (!fgRef.current) return;
         const skipZoom = skipAutoFitZoomRef.current;
+        // Account for right panel width when centering the graph
+        // This shifts the "center" of the graph slightly to the left so it
+        // remains visually centered when the right panel is open.
+        // Note: we read rightPanelOpen from the store directly inside the effect
+        // to avoid re-triggering this effect when the panel opens/closes.
+        const panelOffset = useGraphStore.getState().rightPanelOpen ? 250 : 0;
+
         if (nodes.length <= 4) {
           // Few nodes: we've set fx/fy to 0 in buildGraphData.
           // Center the view at node origin (0,0) and use custom zoom.
@@ -220,7 +227,8 @@ export default function ForceGraph() {
           // Multi-node: use standard zoomToFit with tighter padding.
           fgRef.current.centerAt(0, 0, 1);
           if (!skipZoom) {
-            fgRef.current.zoomToFit(400, 50);
+            // Adjust padding to account for the right panel pushing the graph left
+            fgRef.current.zoomToFit(400, 50 + panelOffset);
             fgRef.current.d3ReheatSimulation();
             fgRef.current.resumeAnimation();
           }
@@ -245,7 +253,7 @@ export default function ForceGraph() {
     if (nodePos && nodePos.x != null && nodePos.y != null) {
       fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
     }
-  }, [selectedNodeId, rightPanelOpen]);
+  }, [selectedNodeId]);
 
   // When a node is selected, zoom in to show its neighborhood (≈20-25 nodes, readable titles).
   // Also sets skipAutoFitZoomRef so the [nodes] auto-fit effect defers to this centering.
@@ -375,6 +383,18 @@ export default function ForceGraph() {
     const level = levelMap.get(node.id) ?? 'peripheral';
     if (level === 'ghost') return;
     fgRef.current?.resumeAnimation();
+
+    // Center and zoom immediately for better UX
+    if (node.x != null && node.y != null && fgRef.current) {
+      // Signal the [nodes] auto-fit effect to skip its animated zoom
+      skipAutoFitZoomRef.current = true;
+      if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
+      autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
+
+      fgRef.current.centerAt(node.x, node.y, 300);
+      fgRef.current.zoom(1.5, 300);
+    }
+
     selectNode(node.id);
   }, [selectNode, levelMap]);
 
@@ -389,11 +409,11 @@ export default function ForceGraph() {
       if (browsePath.length > 0) {
         setClearConfirmOpen(true);
       } else {
-        selectNode(null);
+        clearSelection();
         setFocusMode(false);
       }
     }
-  }, [browsePath.length, selectNode, setFocusMode]);
+  }, [browsePath.length, clearSelection, setFocusMode]);
 
   const handleBackgroundRightClick = useCallback(() => {
     setFocusMode(false);
@@ -712,6 +732,7 @@ function buildGraphData(
   levelMap: ReadonlyMap<string, NodeLevel>,
   selectedNodeId: string | null,
   focusedNodeId: string | null,
+  browsePath: string[],
 ): { nodes: GraphNode[]; links: Array<{ source: string; target: string; score?: number }> } {
   if (!index) return { nodes: [], links: [] };
 
@@ -720,15 +741,20 @@ function buildGraphData(
   const links: Array<{ source: string; target: string; score?: number }> = [];
   const seenNodes = new Set<string>();
 
-  // Active set: nodes that pass filters
+  // Active set: nodes that pass filters + ALL browsePath nodes (so trail always shows)
+  // CRITICAL: trajectory nodes must be in the graph regardless of filters,
+  // otherwise there are no nodes to draw trail edges between.
   const activeIds = new Set<string>();
   for (const [id, entry] of Object.entries(index.index)) {
     if (typeFilter && entry.type !== typeFilter) continue;
     if (tagTreeFilter && !entry.tagTree.some(p => p.startsWith(tagTreeFilter))) continue;
     if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
-    // Keep ghost nodes in the simulation if they pass global filters,
-    // so their physical state persists even when dimmed.
     activeIds.add(id);
+  }
+
+  // FORCE include all browsePath nodes so trail has nodes to connect
+  for (const id of browsePath) {
+    if (index.index[id]) activeIds.add(id);
   }
 
   // Second pass: build nodes and links
@@ -776,6 +802,21 @@ function buildGraphData(
       if (activeIds.has(conn.noteId)) {
         links.push({ source: id, target: conn.noteId, score: conn.score });
       }
+    }
+  }
+
+  // CRITICAL: Add "virtual" trail links between adjacent nodes in browsePath.
+  // These nodes may not have real connections in the index (e.g., they came from
+  // search or different topic areas), so we need to draw them explicitly.
+  const seenTrailLinks = new Set<string>();
+  for (let i = 0; i < browsePath.length - 1; i++) {
+    const a = browsePath[i];
+    const b = browsePath[i + 1];
+    if (!activeIds.has(a) || !activeIds.has(b)) continue;
+    const key = [a, b].sort().join('→');
+    if (!seenTrailLinks.has(key)) {
+      seenTrailLinks.add(key);
+      links.push({ source: a, target: b });
     }
   }
 

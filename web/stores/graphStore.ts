@@ -95,6 +95,8 @@ interface GraphState {
   setTagTreeFilter: (path: string) => void;
   setSearchQuery: (query: string) => void;
   selectNode: (id: string | null) => void;
+  clearSelection: () => void;
+  previewNode: (id: string | null) => void;
   focusNode: (id: string | null) => void;
   setFocusMode: (on: boolean) => void;
   setCurrentScale: (scale: number) => void;
@@ -155,20 +157,31 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
-    let nextPath: string[];
-    if (id && state.browsePath.includes(id)) {
-      const idx = state.browsePath.indexOf(id);
-      if (idx === 0) {
-        nextPath = [];
-      } else {
-        nextPath = state.browsePath.slice(0, idx + 1);
-      }
-    } else {
-      nextPath = id ? [...state.browsePath, id] : [];
+    // If clicking the same node, just open panel (don't remove from path)
+    if (id !== null && state.selectedNodeId === id) {
+      set({ rightPanelOpen: true });
+      return;
     }
-    // Auto-open right panel when a node is selected
-    const panelOpen = id !== null ? true : state.rightPanelOpen;
-    set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: panelOpen });
+    // If id is null, just close panel (keep selection state)
+    if (id === null) {
+      set({ rightPanelOpen: false });
+      return;
+    }
+    // Always append to the path - whether from graph click or search
+    // This preserves the exploration sequence
+    const nextPath = [...state.browsePath, id];
+    set({ selectedNodeId: id, browsePath: nextPath, rightPanelOpen: true });
+  },
+  clearSelection: () => {
+    set({ selectedNodeId: null, browsePath: [], rightPanelOpen: false });
+  },
+  previewNode: (id) => {
+    // Preview a node without modifying browsePath - just open panel
+    if (id === null) {
+      set({ rightPanelOpen: false });
+    } else {
+      set({ selectedNodeId: id, rightPanelOpen: true });
+    }
   },
   focusNode: (id) => set(state => ({
     focusedNodeId: id,
@@ -183,9 +196,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   clearBrowsePath: () => set({ browsePath: [] }),
   setBrowsePathShow: (show) => set({ browsePathShow: show }),
   removeFromBrowsePath: (id) => set(state => {
+    // Just remove this specific node, keep the rest in order
     const idx = state.browsePath.indexOf(id);
     if (idx === -1) return {};
-    return { browsePath: state.browsePath.slice(0, idx) };
+    return { browsePath: state.browsePath.filter(n => n !== id) };
   }),
   setBrowsePath: (path) => set({ browsePath: path }),
   saveTrail: (name, stepsOverride) => {

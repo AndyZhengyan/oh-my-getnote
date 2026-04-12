@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useGraphStore, type TrailStep, type GraphIndex } from '@/stores/graphStore';
-import { Bookmark, Trash2, ChevronUp, ChevronLeft, ChevronRight, Search, Layers } from 'lucide-react';
+import { Bookmark, Trash2, ChevronUp, ChevronLeft, ChevronRight, Search, Layers, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 
@@ -165,7 +165,7 @@ export default function LeftNav() {
     removeFromBrowsePath,
     savedTrails,
     deleteTrail, saveTrail,
-    selectNode, setRightPanelOpen,
+    previewNode, setRightPanelOpen,
     leftNavOpen, setLeftNavOpen,
     searchModalOpen, setSearchModalOpen,
   } = useGraphStore();
@@ -175,6 +175,70 @@ export default function LeftNav() {
   const [typeCollapsed, setTypeCollapsed] = useState(false);
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [tagTreeExpanded, setTagTreeExpanded] = useState<Set<string>>(new Set());
+  const [savingTrail, setSavingTrail] = useState(false);
+
+  // 获取当前时间戳，格式：xxxx/xx/xx_xx:xx
+  function getTimestamp(): string {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `${yyyy}/${mm}/${dd}_${hh}:${min}`;
+  }
+
+  // 基于轨迹节点标题自动生成名称
+  async function generateTrailName(nodeIds: string[]): Promise<string> {
+    const titles = nodeIds
+      .map(id => graphIndex?.index[id]?.title)
+      .filter(Boolean) as string[];
+
+    if (titles.length === 0) {
+      return `${getTimestamp()}_探索路径`;
+    }
+
+    const prompt = `请为以下探索路径生成一个简短的中文名称（不超过10个字），概括这系列笔记的主题：
+${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+只需输出名称，不要其他内容。`;
+
+    try {
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noteId: nodeIds[0],
+          title: titles[0],
+          content: titles.join(' | '),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const name = data.summary?.replace(/^["""]|["""]$/g, '').trim();
+        if (name && name.length <= 15) {
+          return `${getTimestamp()}_${name}`;
+        }
+      }
+    } catch {
+      // AI 不可用时使用默认名称
+    }
+
+    return `${getTimestamp()}_探索路径`;
+  }
+
+  // 保存轨迹
+  async function handleSaveTrail() {
+    if (!browsePath.length || savingTrail) return;
+    setSavingTrail(true);
+    try {
+      const name = await generateTrailName(browsePath);
+      saveTrail(name);
+    } finally {
+      setSavingTrail(false);
+    }
+  }
 
   if (!graphIndex) return null;
 
@@ -440,6 +504,19 @@ export default function LeftNav() {
                   探索路径 ({browsePath.length})
                 </span>
                 <button
+                  onClick={handleSaveTrail}
+                  disabled={!browsePath.length || savingTrail}
+                  title={savingTrail ? '生成名称中...' : '保存轨迹'}
+                  style={{
+                    background: 'none', border: 'none', cursor: browsePath.length && !savingTrail ? 'pointer' : 'default',
+                    color: browsePath.length ? (savingTrail ? 'var(--accent)' : 'var(--text-muted)') : 'var(--border)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { if (browsePath.length && !savingTrail) { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; } }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = browsePath.length ? (savingTrail ? 'var(--accent)' : 'var(--text-muted)') : 'var(--border)'; }}
+                >
+                  <Save size={12} />
+                </button>
+                <button
                   onClick={() => setTrailCollapsed(c => !c)}
                   title={trailCollapsed ? '展开' : '收起'}
                   style={{
@@ -477,7 +554,7 @@ export default function LeftNav() {
                         fontFamily: 'var(--font-ui)',
                         transition: 'background 0.15s, color 0.15s',
                       }}
-                      onClick={() => useGraphStore.getState().selectNode(nodeId)}
+                      onClick={() => useGraphStore.getState().previewNode(nodeId)}
                       onMouseEnter={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'var(--accent)'; el.style.color = 'var(--accent)'; } }}
                       onMouseLeave={e => { if (!isLast) { const el = e.currentTarget as HTMLElement; el.style.borderLeftColor = 'transparent'; el.style.color = 'var(--text-secondary)'; } }}
                       >
@@ -541,8 +618,16 @@ export default function LeftNav() {
                     }}
                     onClick={() => {
                       const ids = trail.steps.map((s: { noteId: string }) => s.noteId);
-                      useGraphStore.setState({ browsePath: ids });
-                      if (ids.length > 0) useGraphStore.getState().selectNode(ids[ids.length - 1]);
+                      if (ids.length === 0) return;
+                      // If current browsePath has content, confirm before overwriting
+                      if (browsePath.length > 0) {
+                        if (!window.confirm('加载此历史轨迹将覆盖当前探索轨迹，确定继续吗？')) return;
+                      }
+                      // Load the trail: set browsePath and select the last node
+                      // NOTE: Do NOT call selectNode here because selectNode APPENDS
+                      // to browsePath. Since we already set browsePath, calling
+                      // selectNode would duplicate the last node (e.g. [A,B,C] -> [A,B,C,C]).
+                      useGraphStore.setState({ browsePath: ids, selectedNodeId: ids[ids.length - 1], rightPanelOpen: true });
                     }}
                     >
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trail.name}</span>

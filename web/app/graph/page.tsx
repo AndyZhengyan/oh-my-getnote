@@ -16,6 +16,7 @@ export default function GraphPage() {
   const loadTrails = useGraphStore((s) => s.loadTrails);
   const rightPanelOpen = useGraphStore((s) => s.rightPanelOpen);
   const selectNode = useGraphStore((s) => s.selectNode);
+  const clearSelection = useGraphStore((s) => s.clearSelection);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,7 +93,7 @@ export default function GraphPage() {
             </span>
             <div style={{ flex: 1 }} />
             <button
-              onClick={() => { if (window.confirm('确定要清空当前轨迹吗？')) selectNode(null); }}
+              onClick={() => { if (window.confirm('确定要清空当前轨迹吗？')) clearSelection(); }}
               title="重置"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
