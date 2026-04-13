@@ -102,7 +102,7 @@ turndownService.escape = (text) => text;
 // turndown calls rule.replacement(node) for each <img> element.
 turndownService.addRule('imageSrc', {
   filter: 'img',
-  replacement(_content: string, node: any) {
+  replacement(_content: string, node: Element) {
     const src: string = node.getAttribute?.('src') ?? '';
     if (!src || src.startsWith('http')) return '';
     const basename = path.basename(src);
@@ -110,7 +110,7 @@ turndownService.addRule('imageSrc', {
     if (!src.match(/\.(jpg|jpeg|png|gif|webp)$/i) && !basename.match(/^[a-f0-9]{32}$/i)) {
       return '';
     }
-    return `![${basename}](images/${(this as any)['noteId']}/${basename})`;
+    return `![${basename}](images/${(this as { noteId?: string })['noteId']}/${basename})`;
   },
 });
 
@@ -139,8 +139,8 @@ function stripTags(html: string): string {
 function htmlToMd(html: string, noteId: string): string[] {
   if (!html) return [];
   // Create a per-call instance so the imageSrc rule can access the noteId
-  const svc = Object.assign(Object.create(Object.getPrototypeOf(turndownService)), turndownService);
-  (svc as any).noteId = noteId;
+  const svc = Object.assign(Object.create(Object.getPrototypeOf(turndownService)), turndownService) as typeof turndownService & { noteId: string };
+  svc.noteId = noteId;
   const md = svc.turndown(html);
   return md.split('\n');
 }

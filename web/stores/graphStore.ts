@@ -62,15 +62,20 @@ export interface RecommendedPath {
 }
 
 /** Simple event bus for graph operations */
-let _resetFn: (() => void) | null = null;
-let _heatFn: (() => void) | null = null;
 let _trailAnimTimer: ReturnType<typeof setTimeout> | null = null;
-export function registerGraphReset(fn: () => void) { _resetFn = fn; }
-export function unregisterGraphReset() { _resetFn = null; }
-export function registerGraphHeat(fn: () => void) { _heatFn = fn; }
-export function unregisterGraphHeat() { _heatFn = null; }
-export function triggerGraphReset() { _resetFn?.(); }
-export function triggerGraphHeat() { _heatFn?.(); }
+
+// Internal event bus references (to be initialized by the store)
+type ResetFn = () => void;
+type HeatFn = () => void;
+let _triggerGraphReset: ResetFn = () => {};
+let _triggerGraphHeat: HeatFn = () => {};
+
+export const registerGraphReset = (fn: () => void) => { _triggerGraphReset = fn; };
+export const unregisterGraphReset = () => { _triggerGraphReset = () => {}; };
+export const registerGraphHeat = (fn: () => void) => { _triggerGraphHeat = fn; };
+export const unregisterGraphHeat = () => { _triggerGraphHeat = () => {}; };
+export const triggerGraphReset = () => _triggerGraphReset();
+export const triggerGraphHeat = () => _triggerGraphHeat();
 
 interface GraphState {
   graphIndex: GraphIndex | null;
@@ -136,25 +141,35 @@ function saveToStorage(trails: Trail[]) {
   localStorage.setItem('memex_trails', JSON.stringify(trails.slice(0, 20)));
 }
 
-export const useGraphStore = create<GraphState>((set, get) => ({
-  graphIndex: null, loaded: false, error: null,
-  typeFilter: '', tagTreeFilter: '', searchQuery: '',
-  selectedNodeId: null,
-  focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
-  browsePath: [],
-  browsePathShow: false,
-  savedTrails: [],
-  highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
-  multiHopPanelOpen: false,
-  recommendedPaths: [],
-  rightPanelOpen: false,
-  leftNavOpen: true,
-  searchModalOpen: false,
+export const useGraphStore = create<GraphState>((set, get) => {
+  // Initialize the internal event bus functions
+  _triggerGraphReset = () => {
+    set({ selectedNodeId: null, focusedNodeId: null, focusMode: false, focusedNeighborIds: new Set<string>(), highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false });
+  };
+  _triggerGraphHeat = () => {
+    // Heat logic placeholder
+    console.log('Graph heat triggered');
+  };
 
-  setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
-  setTypeFilter: (type) => set({ typeFilter: type }),
-  setTagTreeFilter: (path) => set({ tagTreeFilter: path }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  return {
+    graphIndex: null, loaded: false, error: null,
+    typeFilter: '', tagTreeFilter: '', searchQuery: '',
+    selectedNodeId: null,
+    focusedNodeId: null, focusedNeighborIds: new Set<string>(), focusMode: false, currentScale: 1,
+    browsePath: [],
+    browsePathShow: false,
+    savedTrails: [],
+    highlightedTrailId: null, highlightedTrailNodeIds: [], _trailAnimPlaying: false,
+    multiHopPanelOpen: false,
+    recommendedPaths: [],
+    rightPanelOpen: false,
+    leftNavOpen: true,
+    searchModalOpen: false,
+
+    setGraphIndex: (index) => set({ graphIndex: index, loaded: true }),
+    setTypeFilter: (type) => set({ typeFilter: type }),
+    setTagTreeFilter: (path) => set({ tagTreeFilter: path }),
+    setSearchQuery: (query) => set({ searchQuery: query }),
   selectNode: (id) => {
     const state = get();
     // If clicking the same node, just open panel (don't remove from path)
@@ -274,4 +289,5 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         p.noteId === noteId ? { ...p, isSaved: true } : p,
       ),
     })),
-}));
+  };
+});

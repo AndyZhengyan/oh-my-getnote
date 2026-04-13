@@ -1,4 +1,14 @@
-// Fix markdown: add newlines before block-level syntax that got squashed into one line
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useGraphStore } from '@/stores/graphStore';
+import { loadNote, NoteContent } from '@/lib/note';
+import { X, Sparkles, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { motion } from 'framer-motion';
+
+/** Fix markdown: add newlines before block-level syntax that got squashed into one line */
 function fixMarkdownLineBreaks(body: string): string {
   // Add newlines before common block-level markdown patterns
   // These patterns are detected mid-text when the HTML had no <br> between blocks
@@ -16,14 +26,6 @@ function fixMarkdownLineBreaks(body: string): string {
   fixed = fixed.replace(/\n{3,}/g, '\n\n');
   return fixed;
 }
-
-import { useState, useEffect, useCallback } from 'react';
-import { useGraphStore } from '@/stores/graphStore';
-import { loadNote, NoteContent } from '@/lib/note';
-import { X, Sparkles, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { motion } from 'framer-motion';
 
 // 链路感知推荐算法
 function getPathAwareRecommendations(

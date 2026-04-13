@@ -4,12 +4,16 @@
 import { useCallback, useMemo, useState, useEffect, useRef, Component, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
-import { useGraphStore, GraphIndex } from '@/stores/graphStore';
+import { useGraphStore } from '@/stores/graphStore';
 import { registerGraphReset, registerGraphHeat, unregisterGraphReset, unregisterGraphHeat } from '@/stores/graphStore';
+import type { GraphNode, TooltipState } from './types';
+import { buildLevelMap, getNodeVisual, useGraphData } from './useGraphData';
+import Tooltip from './Tooltip';
+import ClearConfirmDialog from './ClearConfirmDialog';
 
 /** Catches canvas/event errors from react-force-graph-2d (e.g. after Turbopack HMR). */
 class ForceGraphErrorBoundary extends Component<{ children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }, { hasError: boolean }> {
-  constructor(props: any) {
+  constructor(props: { children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -42,106 +46,6 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ),
 });
 
-type NodeLevel = 'focused' | 'level1' | 'level2' | 'peripheral' | 'ghost' | 'trajectory';
-
-interface GraphNode {
-  id: string;
-  title: string;
-  type: string;
-  connections: number;
-  snippet?: string;
-  x?: number;
-  y?: number;
-}
-
-interface TooltipState {
-  nodeId: string;
-  x: number;
-  y: number;
-  title: string;
-  snippet: string;
-}
-
-/**
- * Pre-compute all node levels into a Map for O(1) hot-path lookup.
- * Called once per state change, reused across nodeCanvas, linkColor, linkWidth.
- */
-export function buildLevelMap(
-  selectedNodeId: string | null,
-  focusedNodeId: string | null,
-  focusedNeighborIds: string[] | Set<string>,
-  browsePath: string[],
-  graphIndex: GraphIndex | null,
-): ReadonlyMap<string, NodeLevel> {
-  if (!graphIndex) return new Map();
-
-  // Build full level assignment by BFS from the seed node
-  const result = new Map<string, NodeLevel>();
-
-  // 1. Mark trajectory nodes — core identity
-  for (const id of browsePath) result.set(id, 'trajectory');
-
-  const seedId = selectedNodeId ?? focusedNodeId;
-  if (!seedId) {
-    // Nothing selected — remaining peripheral (except trajectory)
-    for (const id of Object.keys(graphIndex.index)) {
-      if (!result.has(id)) result.set(id, 'peripheral');
-    }
-    return result;
-  }
-
-  // BFS up to depth 2
-  const visited = new Set<string>();
-  const queue: [id: string, depth: number][] = [[seedId, 0]];
-  visited.add(seedId);
-
-  while (queue.length > 0) {
-    const [id, depth] = queue.shift()!;
-    const level = depth === 0
-      ? 'focused'
-      : depth === 1
-        ? 'level1'
-        : depth === 2
-          ? 'level2'
-          : undefined;
-    if (level !== undefined) result.set(id, level);
-    else continue; // depth > 2 → ghost (never enqueued)
-
-    if (depth >= 2) continue; // don't expand beyond 2-hop
-    const conns = graphIndex.index[id]?.connections ?? [];
-    for (const conn of conns) {
-      if (!visited.has(conn.noteId)) {
-        visited.add(conn.noteId);
-        queue.push([conn.noteId, depth + 1]);
-      }
-    }
-  }
-
-  // Everything not visited → ghost
-  for (const id of Object.keys(graphIndex.index)) {
-    if (!result.has(id)) result.set(id, 'ghost');
-  }
-
-  // Restore all browsePath nodes to 'trajectory' so they remain visible
-  // even when BFS from the selected seed doesn't reach them.
-  // This keeps the trajectory intact (purple edges + amber circles) regardless
-  // of graph connectivity to the newly-selected node.
-  for (const id of browsePath) result.set(id, 'trajectory');
-
-  return result;
-}
-
-function getNodeVisual(level: NodeLevel) {
-  switch (level) {
-    case 'focused':    return { alpha: 1.0, rBase: 8, rScale: 1.1, ghost: false };
-    case 'trajectory': return { alpha: 1.0, rBase: 7, rScale: 1.0, ghost: false };
-    case 'level1':     return { alpha: 0.8, rBase: 5, rScale: 1.0, ghost: false };
-    case 'level2':     return { alpha: 0.2, rBase: 4, rScale: 0.8, ghost: false };
-    case 'ghost':      return { alpha: 0.04, rBase: 2, rScale: 0.5, ghost: true };
-    default:           return { alpha: 0.5, rBase: 3, rScale: 1.0, ghost: false };
-  }
-}
-
 export default function ForceGraph() {
   const {
     graphIndex, typeFilter, tagTreeFilter, searchQuery,
@@ -172,9 +76,15 @@ export default function ForceGraph() {
     [selectedNodeId, focusedNodeId, focusedNeighborIds, browsePath, graphIndex]
   );
 
-  const { nodes, links } = useMemo(
-    () => buildGraphData(graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId, browsePath),
-    [graphIndex, typeFilter, tagTreeFilter, searchQuery, levelMap, selectedNodeId, focusedNodeId, browsePath]
+  const { nodes, links } = useGraphData(
+    graphIndex,
+    typeFilter,
+    tagTreeFilter,
+    searchQuery,
+    levelMap,
+    selectedNodeId,
+    focusedNodeId,
+    browsePath
   );
 
   // Register reset and heat functions with the global event system
@@ -220,8 +130,8 @@ export default function ForceGraph() {
             fgRef.current.zoom(nodes.length === 1 ? 1.5 : 1.0, 400);
           }
           // Re-clear cache so they don't jump back to old positions on next filter
-          if ((globalThis as any)._nodePosCache) {
-            nodes.forEach(n => (globalThis as any)._nodePosCache.delete(n.id));
+          if ((globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache) {
+            nodes.forEach(n => (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache.delete(n.id));
           }
         } else {
           // Multi-node: use standard zoomToFit with tighter padding.
@@ -249,7 +159,7 @@ export default function ForceGraph() {
   // Pan to the selected node when it changes (e.g. from clicking a recommended path card)
   useEffect(() => {
     if (!selectedNodeId || !fgRef.current) return;
-    const nodePos = (globalThis as any)._nodePosCache?.get(selectedNodeId);
+    const nodePos = (globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache?.get(selectedNodeId);
     if (nodePos && nodePos.x != null && nodePos.y != null) {
       fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
     }
@@ -265,7 +175,7 @@ export default function ForceGraph() {
     if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
     autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
 
-    const nodePos = (globalThis as any)._nodePosCache?.get(selectedNodeId);
+    const nodePos = (globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache?.get(selectedNodeId);
     if (!nodePos || nodePos.x == null) return;
     // Center on selected node with tighter zoom (no zoomToFit — just center + zoom in)
     fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
@@ -438,8 +348,10 @@ export default function ForceGraph() {
           if (n.x == null || n.y == null) return;
 
           // Update cache for re-renders/filters
-          if (!(globalThis as any)._nodePosCache) (globalThis as any)._nodePosCache = new Map();
-          (globalThis as any)._nodePosCache.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy });
+          if (!(globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache) {
+            (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache = new Map();
+          }
+          (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache.set(n.id, { x: n.x, y: n.y });
 
           const level = levelMap.get(n.id) ?? 'peripheral';
           const visual = getNodeVisual(level);
@@ -588,7 +500,6 @@ export default function ForceGraph() {
             // Just set alpha manually to 0 if we want to freeze physics.
             if (fgRef.current) {
               try {
-                // @ts-ignore
                 fgRef.current.d3Force('')?.alpha(0);
               } catch { /* ignore */ }
             }
@@ -601,224 +512,8 @@ export default function ForceGraph() {
       />
       </ForceGraphErrorBoundary>
 
-      {/* Clear trail confirmation dialog */}
-      {clearConfirmOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setClearConfirmOpen(false)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(0,0,0,0.25)',
-              zIndex: 400,
-            }}
-          />
-          {/* Dialog */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)',
-              boxShadow: 'var(--shadow-lg)',
-              padding: '24px 28px',
-              zIndex: 410,
-              minWidth: 280,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 20,
-            }}
-          >
-            <p style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              margin: 0,
-              textAlign: 'center',
-              lineHeight: 1.4,
-            }}>
-              清空当前探索轨迹？
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button
-                onClick={() => setClearConfirmOpen(false)}
-                style={{
-                  flex: 1,
-                  padding: '8px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-elevated)',
-                  color: 'var(--text-secondary)',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-ui)',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--bg-muted)'; }}
-                onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--bg-elevated)'; }}
-              >
-                取消
-              </button>
-              <button
-                onClick={() => {
-                  clearBrowsePath();
-                  clearRecommendedPaths();
-                  setClearConfirmOpen(false);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '8px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-ui)',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => { (e.target as HTMLElement).style.background = '#6D28D9'; }}
-                onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--accent)'; }}
-              >
-                确认
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Hover tooltip */}
-      {tooltip && (
-        <div
-          style={{
-            position: 'absolute',
-            left: tooltip.x + 14,
-            top: tooltip.y - 10,
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-md)',
-            padding: '10px 14px',
-            maxWidth: 240,
-            zIndex: 300,
-            pointerEvents: 'none',
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
-            {tooltip.title}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {tooltip.snippet}
-          </div>
-        </div>
-      )}
+      <ClearConfirmDialog isOpen={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} />
+      <Tooltip tooltip={tooltip} />
     </div>
   );
-}
-
-function buildGraphData(
-  index: GraphIndex | null,
-  typeFilter: string,
-  tagTreeFilter: string,
-  searchQuery: string,
-  levelMap: ReadonlyMap<string, NodeLevel>,
-  selectedNodeId: string | null,
-  focusedNodeId: string | null,
-  browsePath: string[],
-): { nodes: GraphNode[]; links: Array<{ source: string; target: string; score?: number }> } {
-  if (!index) return { nodes: [], links: [] };
-
-  const q = searchQuery.toLowerCase();
-  const nodes: GraphNode[] = [];
-  const links: Array<{ source: string; target: string; score?: number }> = [];
-  const seenNodes = new Set<string>();
-
-  // Active set: nodes that pass filters + ALL browsePath nodes (so trail always shows)
-  // CRITICAL: trajectory nodes must be in the graph regardless of filters,
-  // otherwise there are no nodes to draw trail edges between.
-  const activeIds = new Set<string>();
-  for (const [id, entry] of Object.entries(index.index)) {
-    if (typeFilter && entry.type !== typeFilter) continue;
-    if (tagTreeFilter && !entry.tagTree.some(p => p.startsWith(tagTreeFilter))) continue;
-    if (q && !entry.title.toLowerCase().includes(q) && !entry.bodyPreview?.toLowerCase().includes(q)) continue;
-    activeIds.add(id);
-  }
-
-  // FORCE include all browsePath nodes so trail has nodes to connect
-  for (const id of browsePath) {
-    if (index.index[id]) activeIds.add(id);
-  }
-
-  // Second pass: build nodes and links
-  const showAllConnections = selectedNodeId !== null || focusedNodeId !== null;
-  const MAX_CONNS_PER_NODE = showAllConnections ? Infinity : 3;
-
-  const isFewNodes = activeIds.size <= 4;
-
-  for (const id of activeIds) {
-    const entry = index.index[id]!;
-    if (!seenNodes.has(id)) {
-      seenNodes.add(id);
-      // @ts-ignore - Check if we have this node in global position cache
-      const cached = (globalThis as any)._nodePosCache?.get(id);
-
-      const node: any = {
-        id, title: entry.title, type: entry.type,
-        connections: entry.connections.length, snippet: entry.bodyPreview ?? '',
-        ...cached
-      };
-
-      // If very few nodes, force them toward origin so they don't spawn
-      // at (0,0) and then drift away due to big zoom scaling.
-      if (isFewNodes) {
-        node.fx = 0;
-        node.fy = 0;
-        // Spread them out slightly if multiple
-        if (activeIds.size > 1) {
-          const idx = nodes.length;
-          const angle = (idx / activeIds.size) * Math.PI * 2;
-          node.fx = Math.cos(angle) * 20;
-          node.fy = Math.sin(angle) * 20;
-        }
-      }
-
-      nodes.push(node);
-    }
-
-    // Sort by score descending and take top-N when in default view
-    const conns = showAllConnections
-      ? entry.connections
-      : [...entry.connections].sort((a, b) => b.score - a.score).slice(0, MAX_CONNS_PER_NODE);
-
-    for (const conn of conns) {
-      if (activeIds.has(conn.noteId)) {
-        links.push({ source: id, target: conn.noteId, score: conn.score });
-      }
-    }
-  }
-
-  // CRITICAL: Add "virtual" trail links between adjacent nodes in browsePath.
-  // These nodes may not have real connections in the index (e.g., they came from
-  // search or different topic areas), so we need to draw them explicitly.
-  const seenTrailLinks = new Set<string>();
-  for (let i = 0; i < browsePath.length - 1; i++) {
-    const a = browsePath[i];
-    const b = browsePath[i + 1];
-    if (!activeIds.has(a) || !activeIds.has(b)) continue;
-    const key = [a, b].sort().join('→');
-    if (!seenTrailLinks.has(key)) {
-      seenTrailLinks.add(key);
-      links.push({ source: a, target: b });
-    }
-  }
-
-  return { nodes, links };
 }

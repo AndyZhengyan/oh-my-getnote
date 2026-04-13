@@ -22,17 +22,13 @@ export default function SearchModal() {
   useEffect(() => {
     if (searchModalOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      setQuery('');
-      setResults([]);
-      setTypeFilter('');
     }
   }, [searchModalOpen]);
 
   // Search logic with 300ms debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) return;
 
     debounceRef.current = setTimeout(() => {
       if (!graphIndex) return;

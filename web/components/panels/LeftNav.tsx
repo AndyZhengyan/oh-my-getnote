@@ -6,16 +6,6 @@ import { useGraphStore, type TrailStep, type GraphIndex } from '@/stores/graphSt
 import { Bookmark, Trash2, ChevronUp, ChevronLeft, ChevronRight, Search, Layers, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-
-/** 英文字母序优先，其余按 localeCompare 排的 comparator */
-function compareAlphaFirst(a: string, b: string): number {
-  const aIsEN = /^[A-Za-z]/.test(a);
-  const bIsEN = /^[A-Za-z]/.test(b);
-  if (aIsEN && !bIsEN) return -1;
-  if (!aIsEN && bIsEN) return 1;
-  return a.localeCompare(b, 'zh-CN');
-}
-
 // ---------------------------------------------------------------------------
 // Tag tree node renderer
 // ---------------------------------------------------------------------------
