@@ -1,8 +1,7 @@
 // web/components/toolbar/Toolbar.tsx
 'use client';
 
-import { useGraphStore } from '@/stores/graphStore';
-import { triggerGraphReset } from '@/stores/graphStore';
+import { useGraphStore, triggerGraphReset } from '@/stores/graphStore';
 import { RotateCcw } from 'lucide-react';
 export default function Toolbar() {
   const {
