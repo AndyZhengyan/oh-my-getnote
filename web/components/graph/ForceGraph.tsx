@@ -11,6 +11,27 @@ import { buildLevelMap, getNodeVisual, useGraphData } from './useGraphData';
 import Tooltip from './Tooltip';
 import ClearConfirmDialog from './ClearConfirmDialog';
 
+// Safe global cache type for node position tracking
+interface NodePosCache {
+  _nodePosCache?: Map<string, { x: number; y: number }>;
+}
+
+const getNodePosCache = (): Map<string, { x: number; y: number }> => {
+  const cache = (globalThis as unknown as NodePosCache);
+  if (!cache._nodePosCache) {
+    cache._nodePosCache = new Map();
+  }
+  return cache._nodePosCache;
+};
+
+// Helper to get link source/target ID safely
+function getLinkEndpoint(link: unknown): { sid: string; tid: string } {
+  const l = link as { source: { id: string } | string; target: { id: string } | string };
+  const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
+  const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
+  return { sid, tid };
+}
+
 /** Catches canvas/event errors from react-force-graph-2d (e.g. after Turbopack HMR). */
 class ForceGraphErrorBoundary extends Component<{ children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }, { hasError: boolean }> {
   constructor(props: { children: ReactNode; fgRef: React.MutableRefObject<ForceGraphMethods<NodeObject, LinkObject> | undefined> }) {
@@ -54,8 +75,6 @@ export default function ForceGraph() {
     setCurrentScale, focusNode, setFocusMode,
     highlightedTrailNodeIds,
     browsePath,
-    clearBrowsePath,
-    clearRecommendedPaths,
     clearSelection,
   } = useGraphStore();
 
@@ -66,6 +85,8 @@ export default function ForceGraph() {
   // skips its animated zoom and leaves centering/zooming to the [selectedNodeId] effect.
   const skipAutoFitZoomRef = useRef(false);
   const autoFitSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track previous node count to detect removals vs additions
+  const prevNodeCountRef = useRef(0);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
@@ -111,6 +132,10 @@ export default function ForceGraph() {
   // Auto-fit after data changes (e.g. filter / click)
   useEffect(() => {
     if (fgRef.current && nodes.length > 0) {
+      // Detect if this was a node removal (as opposed to filter/search adding nodes)
+      const isRemoval = nodes.length < prevNodeCountRef.current;
+      prevNodeCountRef.current = nodes.length;
+
       // Reheat + resume after layout changes (filter, etc.)
       setTimeout(() => {
         if (!fgRef.current) return;
@@ -124,21 +149,27 @@ export default function ForceGraph() {
 
         if (nodes.length <= 4) {
           // Few nodes: we've set fx/fy to 0 in buildGraphData.
-          // Center the view at node origin (0,0) and use custom zoom.
-          fgRef.current.centerAt(0, 0, 400);
+          // Only center at origin if this wasn't a removal (to avoid jumping).
+          if (!isRemoval) {
+            fgRef.current.centerAt(0, 0, 400);
+          }
           if (!skipZoom) {
             fgRef.current.zoom(nodes.length === 1 ? 1.5 : 1.0, 400);
           }
           // Re-clear cache so they don't jump back to old positions on next filter
-          if ((globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache) {
-            nodes.forEach(n => (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache.delete(n.id));
-          }
+          const nodePosCache = getNodePosCache();
+          nodes.forEach(n => nodePosCache.delete(n.id));
         } else {
-          // Multi-node: use standard zoomToFit with tighter padding.
-          fgRef.current.centerAt(0, 0, 1);
+          // Multi-node: only recenter if this wasn't a removal.
+          // On removal, let the force simulation rebalance naturally without jumping.
+          if (!isRemoval) {
+            fgRef.current.centerAt(0, 0, 1);
+          }
           if (!skipZoom) {
-            // Adjust padding to account for the right panel pushing the graph left
-            fgRef.current.zoomToFit(400, 50 + panelOffset);
+            if (!isRemoval) {
+              // Adjust padding to account for the right panel pushing the graph left
+              fgRef.current.zoomToFit(400, 50 + panelOffset);
+            }
             fgRef.current.d3ReheatSimulation();
             fgRef.current.resumeAnimation();
           }
@@ -159,7 +190,7 @@ export default function ForceGraph() {
   // Pan to the selected node when it changes (e.g. from clicking a recommended path card)
   useEffect(() => {
     if (!selectedNodeId || !fgRef.current) return;
-    const nodePos = (globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache?.get(selectedNodeId);
+    const nodePos = getNodePosCache().get(selectedNodeId);
     if (nodePos && nodePos.x != null && nodePos.y != null) {
       fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
     }
@@ -175,7 +206,7 @@ export default function ForceGraph() {
     if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
     autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
 
-    const nodePos = (globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache?.get(selectedNodeId);
+    const nodePos = getNodePosCache().get(selectedNodeId);
     if (!nodePos || nodePos.x == null) return;
     // Center on selected node with tighter zoom (no zoomToFit — just center + zoom in)
     fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
@@ -205,7 +236,14 @@ export default function ForceGraph() {
     return () => ro.disconnect();
   }, []);
 
-  const trailNodeSet = useMemo(() => new Set(highlightedTrailNodeIds), [highlightedTrailNodeIds]);
+  // Cleanup timers on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
+      if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
+    };
+  }, []);
+
   const trailLinkSet = useMemo(() => new Set(
     browsePath.slice(0, -1).map((id, i) => `${id}→${browsePath[i + 1]}`)
   ), [browsePath]);
@@ -329,6 +367,152 @@ export default function ForceGraph() {
     setFocusMode(false);
   }, [setFocusMode]);
 
+  // Extract nodeCanvasObject to prevent recreation on every render
+  const nodeCanvasObject = useCallback((node: unknown, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const n = node as GraphNode & { x?: number; y?: number; vx?: number; vy?: number };
+    if (n.x == null || n.y == null) return;
+
+    // Update cache for re-renders/filters
+    getNodePosCache().set(n.id, { x: n.x, y: n.y });
+
+    const level = levelMap.get(n.id) ?? 'peripheral';
+    const visual = getNodeVisual(level);
+    const maxConn = 10;
+    const r = (visual.rBase + Math.min(n.connections / 2, maxConn)) * visual.rScale;
+    const domainColor = '#9CA3AF';
+
+    ctx.globalAlpha = visual.alpha;
+
+    // 1. Determine "Role" for coloring
+    const pathIdx = browsePath.indexOf(n.id);
+    const isTrajectory = pathIdx !== -1;
+    const isCurrent = n.id === selectedNodeId || level === 'focused';
+    const isRecommendation = (level === 'level1' || level === 'level2') && !isTrajectory;
+
+    // Breathing glow for current location
+    if (isCurrent) {
+      const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
+      ctx.shadowColor = isTrajectory ? '#7C3AED' : '#F59E0B';
+      ctx.shadowBlur = 10 + pulse * 15;
+    }
+
+    // 2. Render Node Body
+    let fillStyle = domainColor;
+    if (isTrajectory) {
+      // Purple gradient based on recency
+      // Last node (isCurrent) is deep purple, older nodes fade
+      const age = browsePath.length - 1 - pathIdx;
+      const opacity = Math.max(0.3, 1 - age * 0.15);
+      fillStyle = `rgba(124, 58, 237, ${opacity})`;
+    } else if (isRecommendation) {
+      // Recommendations are Amber
+      fillStyle = '#F59E0B';
+    }
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+
+    // 3. Render Selection/Tracing Overlays
+    if (isCurrent) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Trail highlight (amber dashed circle for ANY node in browsePath to show it's part of history)
+    if (isTrajectory && !isCurrent) {
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Reset shadow
+    ctx.shadowBlur = 0;
+
+    // Semantic zoom: content varies by zoom level
+    // - globalScale < 0.5: far view → no label, just the dot
+    // - globalScale 0.5–1.2: mid view → node title
+    // - globalScale > 1.2: close view → title + first 2 lines of body
+    if (!visual.ghost && globalScale >= 0.5) {
+      const labelColor = level === 'focused' ? '#7C3AED' : '#9CA3AF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const baseFontSize = 9;
+      const fontSize = Math.max(7, Math.min(baseFontSize / globalScale, 11));
+      ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
+      ctx.fillStyle = labelColor;
+
+      // Dim labels when zoomed out, clearer when zoomed in
+      ctx.globalAlpha = visual.alpha * (globalScale > 1 ? 0.85 : 0.4 + globalScale * 0.5);
+
+      const label = n.title.length > 22 ? n.title.slice(0, 21) + '…' : n.title;
+      const labelY = n.y + r + 4;
+      ctx.fillText(label, n.x, labelY);
+
+      // Close view: show first 2 lines of body snippet
+      if (globalScale > 1.2 && n.snippet) {
+        const snippetFontSize = Math.max(6, Math.min(8 / globalScale, 10));
+        ctx.font = `400 ${snippetFontSize}px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = '#6B7280';
+        ctx.globalAlpha = visual.alpha * 0.6;
+
+        const rawLines = n.snippet.split('\n').filter(l => l.trim());
+        const lines = rawLines.slice(0, 2).map(l =>
+          l.length > 40 ? l.slice(0, 39) + '…' : l
+        );
+        lines.forEach((line, i) => {
+          ctx.fillText(line, n.x!, labelY + snippetFontSize * 1.4 * (i + 1));
+        });
+      }
+    }
+    ctx.globalAlpha = 1;
+  }, [levelMap, browsePath, selectedNodeId]);
+
+  // Extract linkColor to prevent recreation on every render
+  const linkColor = useCallback((link: unknown): string => {
+    const { sid, tid } = getLinkEndpoint(link);
+
+    const sLevel = levelMap.get(sid) ?? 'peripheral';
+    const tLevel = levelMap.get(tid) ?? 'peripheral';
+    if (sLevel === 'ghost' || tLevel === 'ghost') return 'rgba(0,0,0,0)';
+
+    // 1. Trail edges (My logic steps) -> Purple solid
+    if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#7C3AED';
+
+    // 2. Recommendation edges (Future steps from current node) -> Faint Purple
+    if (selectedNodeId || focusMode) {
+      const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
+      if (isFromCurrent && (sLevel === 'level1' || tLevel === 'level1')) {
+        return 'rgba(124, 58, 237, 0.4)'; // Faint purple for "Future paths"
+      }
+      if (sLevel === 'level1' || tLevel === 'level1') {
+        return 'rgba(124, 58, 237, 0.1)'; // Very faint purple for background relations
+      }
+      return 'rgba(0,0,0,0.01)';
+    }
+    return 'rgba(0,0,0,0.04)';
+  }, [levelMap, trailLinkSet, selectedNodeId, focusMode, focusedNodeId]);
+
+  // Extract linkWidth to prevent recreation on every render
+  const linkWidth = useCallback((link: unknown): number => {
+    const { sid, tid } = getLinkEndpoint(link);
+
+    const isTrajectory = trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`);
+    if (isTrajectory) return 4;
+
+    const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
+    if (isFromCurrent) return 1.2;
+
+    return 0.5;
+  }, [trailLinkSet, selectedNodeId, focusedNodeId]);
+
   return (
     <div
       ref={containerRef}
@@ -342,154 +526,10 @@ export default function ForceGraph() {
         graphData={{ nodes, links }}
         width={dims.w}
         height={dims.h}
-        onZoom={handleZoom as (transform: { k: number }) => void}
-        nodeCanvasObject={(node: unknown, ctx: CanvasRenderingContext2D, globalScale: number) => {
-          const n = node as GraphNode & { x?: number; y?: number; vx?: number; vy?: number };
-          if (n.x == null || n.y == null) return;
-
-          // Update cache for re-renders/filters
-          if (!(globalThis as unknown as { _nodePosCache?: Map<string, { x: number; y: number }> })._nodePosCache) {
-            (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache = new Map();
-          }
-          (globalThis as unknown as { _nodePosCache: Map<string, { x: number; y: number }> })._nodePosCache.set(n.id, { x: n.x, y: n.y });
-
-          const level = levelMap.get(n.id) ?? 'peripheral';
-          const visual = getNodeVisual(level);
-          const maxConn = 10;
-          const r = (visual.rBase + Math.min(n.connections / 2, maxConn)) * visual.rScale;
-          const domainColor = '#9CA3AF';
-
-          ctx.globalAlpha = visual.alpha;
-
-          // 1. Determine "Role" for coloring
-          const pathIdx = browsePath.indexOf(n.id);
-          const isTrajectory = pathIdx !== -1;
-          const isCurrent = n.id === selectedNodeId || level === 'focused';
-          const isRecommendation = (level === 'level1' || level === 'level2') && !isTrajectory;
-
-          // Breathing glow for current location
-          if (isCurrent) {
-            const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
-            ctx.shadowColor = isTrajectory ? '#7C3AED' : '#F59E0B';
-            ctx.shadowBlur = 10 + pulse * 15;
-          }
-
-          // 2. Render Node Body
-          let fillStyle = domainColor;
-          if (isTrajectory) {
-            // Purple gradient based on recency
-            // Last node (isCurrent) is deep purple, older nodes fade
-            const age = browsePath.length - 1 - pathIdx;
-            const opacity = Math.max(0.3, 1 - age * 0.15);
-            fillStyle = `rgba(124, 58, 237, ${opacity})`;
-          } else if (isRecommendation) {
-            // Recommendations are Amber
-            fillStyle = '#F59E0B';
-          }
-
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-          ctx.fillStyle = fillStyle;
-          ctx.fill();
-
-          // 3. Render Selection/Tracing Overlays
-          if (isCurrent) {
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-
-          // Trail highlight (amber dashed circle for ANY node in browsePath to show it's part of history)
-          if (isTrajectory && !isCurrent) {
-            ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([2, 2]);
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r + 3, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
-
-          // Reset shadow
-          ctx.shadowBlur = 0;
-
-          // Semantic zoom: content varies by zoom level
-          // - globalScale < 0.5: far view → no label, just the dot
-          // - globalScale 0.5–1.2: mid view → node title
-          // - globalScale > 1.2: close view → title + first 2 lines of body
-          if (!visual.ghost && globalScale >= 0.5) {
-            const labelColor = level === 'focused' ? '#7C3AED' : '#9CA3AF';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-
-            const baseFontSize = 9;
-            const fontSize = Math.max(7, Math.min(baseFontSize / globalScale, 11));
-            ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
-            ctx.fillStyle = labelColor;
-
-            // Dim labels when zoomed out, clearer when zoomed in
-            ctx.globalAlpha = visual.alpha * (globalScale > 1 ? 0.85 : 0.4 + globalScale * 0.5);
-
-            const label = n.title.length > 22 ? n.title.slice(0, 21) + '…' : n.title;
-            const labelY = n.y + r + 4;
-            ctx.fillText(label, n.x, labelY);
-
-            // Close view: show first 2 lines of body snippet
-            if (globalScale > 1.2 && n.snippet) {
-              const snippetFontSize = Math.max(6, Math.min(8 / globalScale, 10));
-              ctx.font = `400 ${snippetFontSize}px Inter, system-ui, sans-serif`;
-              ctx.fillStyle = '#6B7280';
-              ctx.globalAlpha = visual.alpha * 0.6;
-
-              const rawLines = n.snippet.split('\n').filter(l => l.trim());
-              const lines = rawLines.slice(0, 2).map(l =>
-                l.length > 40 ? l.slice(0, 39) + '…' : l
-              );
-              lines.forEach((line, i) => {
-                ctx.fillText(line, n.x!, labelY + snippetFontSize * 1.4 * (i + 1));
-              });
-            }
-          }
-          ctx.globalAlpha = 1;
-        }}
-        linkColor={(link: unknown) => {
-          const l = link as { source: { id: string } | string; target: { id: string } | string };
-          const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
-          const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
-
-          const sLevel = levelMap.get(sid) ?? 'peripheral';
-          const tLevel = levelMap.get(tid) ?? 'peripheral';
-          if (sLevel === 'ghost' || tLevel === 'ghost') return 'rgba(0,0,0,0)';
-
-          // 1. Trail edges (My logic steps) -> Purple solid
-          if (trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`)) return '#7C3AED';
-
-          // 2. Recommendation edges (Future steps from current node) -> Faint Purple
-          if (selectedNodeId || focusMode) {
-            const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
-            if (isFromCurrent && (sLevel === 'level1' || tLevel === 'level1')) {
-              return 'rgba(124, 58, 237, 0.4)'; // Faint purple for "Future paths"
-            }
-            if (sLevel === 'level1' || tLevel === 'level1') {
-              return 'rgba(124, 58, 237, 0.1)'; // Very faint purple for background relations
-            }
-            return 'rgba(0,0,0,0.01)';
-          }
-          return 'rgba(0,0,0,0.04)';
-        }}
-        linkWidth={(link: unknown) => {
-          const l = link as { source: { id: string } | string; target: { id: string } | string };
-          const sid = typeof l.source === 'object' ? (l.source as { id: string }).id : String(l.source);
-          const tid = typeof l.target === 'object' ? (l.target as { id: string }).id : String(l.target);
-
-          const isTrajectory = trailLinkSet.has(`${sid}→${tid}`) || trailLinkSet.has(`${tid}→${sid}`);
-          if (isTrajectory) return 4;
-
-          const isFromCurrent = sid === selectedNodeId || tid === selectedNodeId || sid === focusedNodeId || tid === focusedNodeId;
-          if (isFromCurrent) return 1.2;
-
-          return 0.5;
-        }}
+        onZoom={handleZoom}
+        nodeCanvasObject={nodeCanvasObject}
+        linkColor={linkColor}
+        linkWidth={linkWidth}
         onNodeClick={handleNodeClick as (node: unknown) => void}
         onNodeRightClick={handleNodeRightClick as (node: unknown) => void}
         onNodeDrag={() => fgRef.current?.resumeAnimation()}
