@@ -52,8 +52,11 @@ function buildFrontmatter(fm: Record<string, unknown>): string {
     } else if (typeof value === 'number') {
       lines.push(`${key}: ${value}`);
     } else if (Array.isArray(value)) {
-      const items = value.map(v => `"${String(v).replace(/"/g, '\\"')}"`).join(', ');
-      lines.push(`${key}: [${items}]`);
+      // Use proper YAML multi-line list format
+      lines.push(`${key}:`);
+      for (const item of value) {
+        lines.push(`  - "${String(item).replace(/"/g, '\\"')}"`);
+      }
     } else {
       lines.push(`${key}: "${String(value).replace(/"/g, '\\"')}"`);
     }
