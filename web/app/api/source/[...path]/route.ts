@@ -24,22 +24,29 @@ export async function GET(
 ) {
   const { path: pathParts } = await context.params;
   // source/ is at the project root, one level up from the Next.js web/ directory
-  const filePath = path.join(process.cwd(), '..', 'source', ...pathParts);
+  const baseDir = path.resolve(process.cwd(), '..', 'source');
+  const filePath = path.join(baseDir, ...pathParts);
 
-  if (!fs.existsSync(filePath)) {
+  // Prevent path traversal: ensure resolved path is within baseDir
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(baseDir + path.sep)) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const stat = fs.statSync(filePath);
+  const stat = fs.statSync(resolvedPath);
   if (stat.isDirectory()) {
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = path.extname(resolvedPath).toLowerCase();
   const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream';
 
   try {
-    const content = fs.readFileSync(filePath);
+    const content = fs.readFileSync(resolvedPath);
     return new NextResponse(content, {
       status: 200,
       headers: { 'Content-Type': contentType },

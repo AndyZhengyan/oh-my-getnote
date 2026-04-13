@@ -12,13 +12,20 @@ export async function PATCH(req: NextRequest) {
     }
 
     // notePath: "notes/录音笔记/uuid.md"（相对于 public/）
-    const fullPath = path.join(process.cwd(), 'public', notePath);
+    const baseDir = path.resolve(process.cwd(), 'public');
+    const fullPath = path.join(baseDir, notePath);
 
-    if (!fs.existsSync(fullPath)) {
+    // Prevent path traversal: ensure resolved path is within baseDir
+    const resolvedPath = path.resolve(fullPath);
+    if (!resolvedPath.startsWith(baseDir + path.sep)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
       return NextResponse.json({ error: 'Note file not found' }, { status: 404 });
     }
 
-    const content = fs.readFileSync(fullPath, 'utf8');
+    const content = fs.readFileSync(resolvedPath, 'utf8');
     const bodyStart = content.indexOf('\n---\n', 4);
     if (bodyStart < 0) {
       return NextResponse.json({ error: 'Invalid markdown format' }, { status: 500 });
@@ -27,7 +34,7 @@ export async function PATCH(req: NextRequest) {
     const body = content.slice(bodyStart + 5);
     const newFm = buildFrontmatter(frontmatter);
     const newContent = `${newFm}\n---\n${body}`;
-    fs.writeFileSync(fullPath, '\uFEFF' + newContent, 'utf8');
+    fs.writeFileSync(resolvedPath, '\uFEFF' + newContent, 'utf8');
 
     return NextResponse.json({ success: true });
   } catch (err) {
