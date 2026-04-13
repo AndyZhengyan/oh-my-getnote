@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGraphStore } from '@/stores/graphStore';
 import { loadNote, NoteContent } from '@/lib/note';
 import { X, Sparkles, Loader2 } from 'lucide-react';
@@ -224,7 +224,7 @@ export default function RightPanel() {
         {/* Footer: path-aware recommendations */}
         <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', fontFamily: 'var(--font-ui)' }}>
           {/* 链路感知推荐 */}
-          {(() => {
+          {useMemo(() => {
             const recommendations = getPathAwareRecommendations(
               browsePath ?? [],
               selectedNodeId,
@@ -267,7 +267,7 @@ export default function RightPanel() {
                 </div>
               </>
             );
-          })()}
+          }, [browsePath, selectedNodeId, graphIndex])}
         </div>
       </motion.aside>
   );

@@ -87,6 +87,9 @@ export default function ForceGraph() {
   const autoFitSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track previous node count to detect removals vs additions
   const prevNodeCountRef = useRef(0);
+  // Pulse time ref: updated via rAF, avoids Date.now() in canvas callback
+  const pulseTimeRef = useRef(0);
+  const pulseRafRef = useRef<number | null>(null);
   const [dims, setDims] = useState({ w: 800, h: 600 });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
@@ -241,7 +244,20 @@ export default function ForceGraph() {
     return () => {
       if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
       if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
+      if (pulseRafRef.current) cancelAnimationFrame(pulseRafRef.current);
     };
+  }, []);
+
+  // rAF loop for canvas pulse animation — drives nodeCanvasObject without Date.now()
+  useEffect(() => {
+    let rafId: number;
+    const tick = () => {
+      pulseTimeRef.current = performance.now();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    pulseRafRef.current = rafId;
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   const trailLinkSet = useMemo(() => new Set(
@@ -391,7 +407,7 @@ export default function ForceGraph() {
 
     // Breathing glow for current location
     if (isCurrent) {
-      const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
+      const pulse = (Math.sin(pulseTimeRef.current / 400) + 1) / 2;
       ctx.shadowColor = isTrajectory ? '#7C3AED' : '#F59E0B';
       ctx.shadowBlur = 10 + pulse * 15;
     }
