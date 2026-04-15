@@ -61,8 +61,19 @@ class ForceGraphErrorBoundary extends Component<{ children: ReactNode; fgRef: Re
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
   loading: () => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 14 }}>
-      加载图谱…
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, flexDirection: 'column' }}>
+      <div style={{ display: 'flex', gap: 5 }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: 'var(--text-muted)',
+            animation: 'graphPulse 1.2s ease-in-out infinite',
+            animationDelay: `${i * 0.18}s`,
+          }} />
+        ))}
+      </div>
+      <span style={{ color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>渲染中…</span>
+      <style>{`@keyframes graphPulse { 0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:.7;transform:scale(1)} }`}</style>
     </div>
   ),
 });
@@ -81,6 +92,10 @@ export default function ForceGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods<NodeObject, LinkObject>>(undefined);
   const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fix #102: re-center after the right panel animation completes (0.28s).
+  // Stores the nodeId to re-center so the ResizeObserver handler can cancel the
+  // pending timer on subsequent triggers and stale unmounts.
+  const pendingCenterRef = useRef<{ nodeId: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   // Tracks whether a new node was just selected so the auto-fit effect (nodes[])
   // skips its animated zoom and leaves centering/zooming to the [selectedNodeId] effect.
   const skipAutoFitZoomRef = useRef(false);
@@ -211,9 +226,9 @@ export default function ForceGraph() {
 
     const nodePos = getNodePosCache().get(selectedNodeId);
     if (!nodePos || nodePos.x == null) return;
-    // Center on selected node with tighter zoom (no zoomToFit — just center + zoom in)
+    // Center on selected node and zoom in so text is readable
     fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
-    fgRef.current.zoom(1.5, 300);
+    fgRef.current.zoom(2.5, 300);
   }, [selectedNodeId]);
 
   // Initial graph zoom-in: show ~20-30 nodes with readable titles (not all 655)
@@ -228,16 +243,69 @@ export default function ForceGraph() {
     }, 1500);
   }, [nodes.length]);
 
+  // Re-fit the graph when the container resizes (e.g. right panel closes/opens)
   useEffect(() => {
     if (!containerRef.current) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) {
         setDims({ w: entry.contentRect.width, h: entry.contentRect.height });
       }
+      // Debounce zoomToFit so the DOM has settled before re-fitting
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (fgRef.current && nodes.length > 0) {
+          fgRef.current.zoomToFit(400, 50);
+        }
+      }, 150);
     });
     ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, []);
+    return () => {
+      ro.disconnect();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [nodes.length]);
+
+  // Fix #102: when the right panel opens it shrinks the canvas container,
+  // breaking the centering done by the [selectedNodeId] effect.
+  // Detect the shrink (panel opening) and re-center after the panel animation finishes.
+  useEffect(() => {
+    if (!containerRef.current || !selectedNodeId) return;
+    let lastWidth = containerRef.current.getBoundingClientRect().width;
+
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const newWidth = entry.contentRect.width;
+        // Only act when the container shrinks (panel is opening), not when it grows (panel closing).
+        if (newWidth < lastWidth) {
+          // Cancel any previously pending re-center.
+          if (pendingCenterRef.current) {
+            clearTimeout(pendingCenterRef.current.timer);
+          }
+          // Re-center after the panel's 0.28s animation completes.
+          const timer = setTimeout(() => {
+            if (!fgRef.current || !selectedNodeId) return;
+            const nodePos = getNodePosCache().get(selectedNodeId);
+            if (nodePos && nodePos.x != null) {
+              fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
+              fgRef.current.zoom(2.5, 300);
+            }
+            pendingCenterRef.current = null;
+          }, 350);
+          pendingCenterRef.current = { nodeId: selectedNodeId, timer };
+        }
+        lastWidth = newWidth;
+      }
+    });
+    ro.observe(containerRef.current);
+    return () => {
+      ro.disconnect();
+      if (pendingCenterRef.current) {
+        clearTimeout(pendingCenterRef.current.timer);
+        pendingCenterRef.current = null;
+      }
+    };
+  }, [selectedNodeId]);
 
   // Cleanup timers on unmount to prevent memory leaks
   useEffect(() => {
@@ -245,6 +313,7 @@ export default function ForceGraph() {
       if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
       if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
       if (pulseRafRef.current) cancelAnimationFrame(pulseRafRef.current);
+      if (pendingCenterRef.current) { clearTimeout(pendingCenterRef.current.timer); pendingCenterRef.current = null; }
     };
   }, []);
 
@@ -347,18 +416,6 @@ export default function ForceGraph() {
     const level = levelMap.get(node.id) ?? 'peripheral';
     if (level === 'ghost') return;
     fgRef.current?.resumeAnimation();
-
-    // Center and zoom immediately for better UX
-    if (node.x != null && node.y != null && fgRef.current) {
-      // Signal the [nodes] auto-fit effect to skip its animated zoom
-      skipAutoFitZoomRef.current = true;
-      if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
-      autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
-
-      fgRef.current.centerAt(node.x, node.y, 300);
-      fgRef.current.zoom(1.5, 300);
-    }
-
     selectNode(node.id);
   }, [selectNode, levelMap]);
 
@@ -557,7 +614,9 @@ export default function ForceGraph() {
             if (fgRef.current) {
               try {
                 fgRef.current.d3Force('')?.alpha(0);
-              } catch { /* ignore */ }
+              } catch (err) {
+                console.error('[ForceGraph] d3Force freeze failed:', err);
+              }
             }
           }, 2000);
         }}

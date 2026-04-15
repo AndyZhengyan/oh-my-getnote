@@ -8,9 +8,10 @@ import { useGraphStore } from '@/stores/graphStore';
 import { Search, X } from 'lucide-react';
 
 export default function SearchModal() {
-  const { graphIndex, searchModalOpen, setSearchModalOpen, selectNode, setRightPanelOpen } = useGraphStore();
+  const { graphIndex, searchModalOpen, setSearchModalOpen } = useGraphStore();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [modalTop, setModalTop] = useState<number>(0);
   const [results, setResults] = useState<Array<{
     id: string; title: string; type: string;
     bodyPreview: string; createdAt?: string; tags?: string[];
@@ -24,6 +25,14 @@ export default function SearchModal() {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [searchModalOpen]);
+
+  // Compute modal top position: 40% down from viewport top
+  useEffect(() => {
+    setModalTop(typeof window !== 'undefined' ? window.innerHeight * 0.4 : 0);
+    const onResize = () => setModalTop(typeof window !== 'undefined' ? window.innerHeight * 0.4 : 0);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Search logic with 300ms debounce
   useEffect(() => {
@@ -58,14 +67,25 @@ export default function SearchModal() {
   }, [query, typeFilter, graphIndex]);
 
   const handleSelect = (noteId: string) => {
-    selectNode(noteId);
-    setRightPanelOpen(true);
+    // Read current browsePath atomically and update in a single set() call,
+    // matching the graph click (ForceGraph.handleNodeClick) behavior where
+    // selectNode is the sole state writer for browsePath. Using two separate
+    // store actions (selectNode + setRightPanelOpen) here risks the
+    // browsePath update being isolated from the panel open flag.
+    const { browsePath, selectedNodeId } = useGraphStore.getState();
+    useGraphStore.setState({
+      selectedNodeId: noteId,
+      browsePath: noteId === selectedNodeId ? browsePath : [...browsePath, noteId],
+      rightPanelOpen: true,
+    });
     setSearchModalOpen(false);
   };
 
   const handleClose = () => setSearchModalOpen(false);
 
-  const types = Object.keys(graphIndex?.stats.by_type ?? {});
+  const types = Array.from(
+    new Set(Object.values(graphIndex?.index ?? {}).map((e) => e.type).filter(Boolean))
+  ).sort();
 
   const modalContent = (
     <AnimatePresence>
@@ -86,8 +106,8 @@ export default function SearchModal() {
           {/* Modal — 页面中上居中，大尺寸（wrapper 负责居中，motion.div 只负责动画避免 transform 冲突） */}
           <div
             style={{
-              position: 'fixed', top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
+              position: 'fixed', top: modalTop, left: '50%',
+              transform: 'translate(-50%, 0)',
               width: 640,
               zIndex: 510,
             }}
@@ -144,27 +164,48 @@ export default function SearchModal() {
             {/* Results */}
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {query && results.length === 0 && (
-                <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>没有找到匹配的笔记</div>
+                <div style={{ padding: '36px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 24, opacity: 0.3 }}>🔍</span>
+                  <span style={{ lineHeight: 1.5 }}>没有找到匹配的笔记<br /><span style={{ opacity: 0.6, fontSize: 11 }}>尝试更换关键词或筛选条件</span></span>
+                </div>
               )}
               {!query && (
-                <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>输入关键词开始搜索</div>
+                <div style={{ padding: '36px 18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 24, opacity: 0.25 }}>💡</span>
+                  <span style={{ lineHeight: 1.5 }}>输入关键词开始搜索<br /><span style={{ opacity: 0.6, fontSize: 11 }}>支持标题、内容和标签搜索</span></span>
+                </div>
               )}
               {results.map(note => (
                 <div key={note.id} onClick={() => handleSelect(note.id)}
-                  style={{ padding: '14px 18px', borderBottom: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'background 0.12s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.03)'; }}
+                  style={{ padding: '12px 18px', borderBottom: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'background 0.12s', display: 'flex', flexDirection: 'column', gap: 4 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.04)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 5, lineHeight: 1.4 }}>
-                    {note.title.length > 60 ? note.title.slice(0, 59) + '…' : note.title}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {note.type && (
+                      <span style={{ fontSize: 10, fontWeight: 600, background: 'rgba(99,102,241,0.1)', color: '#6366F1', padding: '1px 7px', borderRadius: 10, letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
+                        {note.type}
+                      </span>
+                    )}
+                    {note.createdAt && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{note.createdAt}</span>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 5 }}>
-                    {note.type}
-                    {note.createdAt ? ` · ${note.createdAt}` : ''}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                    {note.title.length > 60 ? note.title.slice(0, 59) + '…' : note.title}
                   </div>
                   {note.bodyPreview && (
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {note.bodyPreview}
+                    </div>
+                  )}
+                  {note.tags && note.tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+                      {note.tags.slice(0, 4).map(tag => (
+                        <span key={tag} style={{ fontSize: 10, background: 'rgba(0,0,0,0.04)', color: 'var(--text-muted)', padding: '1px 6px', borderRadius: 8 }}>
+                          #{tag}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
