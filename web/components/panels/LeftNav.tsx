@@ -494,6 +494,18 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}
                   探索路径 ({browsePath.length})
                 </span>
                 <button
+                  onClick={() => setTrailCollapsed(c => !c)}
+                  title={trailCollapsed ? '展开' : '收起'}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                >
+                  <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: trailCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
+                </button>
+                <button
                   onClick={handleSaveTrail}
                   disabled={!browsePath.length || savingTrail}
                   title={savingTrail ? '生成名称中...' : '保存轨迹'}
@@ -506,25 +518,22 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}
                 >
                   <Save size={12} />
                 </button>
-                <button
-                  onClick={() => setTrailCollapsed(c => !c)}
-                  title={trailCollapsed ? '展开' : '收起'}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3, flexShrink: 0,
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-                >
-                  <ChevronUp size={12} style={{ transition: 'transform 0.2s', transform: trailCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }} />
-                </button>
               </div>
 
               {!trailCollapsed && (
                 <div style={{ flex: 1, maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                   {browsePath.length === 0 && (
-                    <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
-                      点击图谱节点开始追踪
+                    <div style={{
+                      padding: '10px 16px 6px',
+                      fontSize: 11,
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                      <span style={{ fontSize: 16, opacity: 0.4 }}>🧭</span>
+                      <span style={{ textAlign: 'center', lineHeight: 1.5 }}>点击图谱节点<br />开始追踪</span>
                     </div>
                   )}
                   {browsePath.map((nodeId, i) => {
@@ -592,8 +601,14 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}
               {!historyCollapsed && (
                 <div style={{ padding: '2px 0 6px', maxHeight: 80, overflowY: 'auto' }}>
                   {savedTrails.length === 0 && (
-                    <div style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text-muted)' }}>
-                      暂无
+                    <div style={{
+                      padding: '6px 16px',
+                      fontSize: 11,
+                      color: 'var(--text-muted)',
+                      lineHeight: 1.5,
+                    }}>
+                      暂无保存的轨迹<br />
+                      <span style={{ opacity: 0.6 }}>点击上方保存按钮归档</span>
                     </div>
                   )}
                   {savedTrails.slice(0, 5).map(trail => (

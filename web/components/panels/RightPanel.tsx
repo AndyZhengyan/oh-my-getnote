@@ -80,9 +80,11 @@ export default function RightPanel() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     setAiError(null);
+    setLoadError(false);
     if (!selectedNodeId || !graphIndex) { setNote(null); setAiSummary(null); return; }
     const entry = graphIndex.index[selectedNodeId];
     if (!entry) return;
@@ -95,6 +97,10 @@ export default function RightPanel() {
         setAiSummary(n.frontmatter.ai_summary);
         localStorage.setItem(`ai_summary_${selectedNodeId}`, n.frontmatter.ai_summary);
       }
+      setLoading(false);
+    }).catch(err => {
+      console.error('[RightPanel] Failed to load note:', err);
+      setLoadError(true);
       setLoading(false);
     });
   }, [selectedNodeId, graphIndex]);
@@ -132,9 +138,9 @@ export default function RightPanel() {
 
   return (
     <motion.aside
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
       style={{
         width: '100%',
         height: '100%',
@@ -216,7 +222,10 @@ export default function RightPanel() {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixMarkdownLineBreaks(note.body)}</ReactMarkdown>
             </div>
           )}
-          {!loading && !note?.body && (
+          {!loading && loadError && (
+            <div style={{ fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font-ui)', padding: '8px 18px' }}>（加载失败，请重试）</div>
+          )}
+          {!loading && !loadError && !note?.body && (
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>（无正文内容）</div>
           )}
         </div>

@@ -54,6 +54,7 @@ async function generateTagTree(tagList: string[]): Promise<Record<string, string
   try {
     tree = JSON.parse(phase1Text);
   } catch {
+    console.warn('[convert] Phase 1 AI returned unparseable JSON, falling back to default tree:', phase1Text.slice(0, 100));
     tree = {};
   }
 
@@ -269,9 +270,10 @@ async function main() {
       fs.writeFileSync(htmlPath, fixedHtml, 'utf-8');
     }
 
-    // 复制图片
+    // 复制图片：使用 sourceDir 而非 notesDir 作为路径基准，
+    // 因为原始 HTML 中的相对路径如 "files/xxx" 相对于 sourceDir（笔记归档根目录）
     const noteImageDir = path.join(imagesOutDir, note.id);
-    copyImages(html, notesDir, noteImageDir);
+    copyImages(html, sourceDir, noteImageDir);
 
     const result = convertHtmlToMarkdown(fixedHtml, note.id);
     if (!result) continue;

@@ -43,8 +43,27 @@ export default function GraphPage() {
 
   if (!loaded || !graphIndex) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)', fontSize: 14, background: 'var(--bg-base)' }}>
-        加载中…
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-base)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          {/* Skeleton graph nodes */}
+          <div style={{ position: 'relative', width: 180, height: 120 }}>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                width: [12, 18, 10, 14, 8, 16][i],
+                height: [12, 18, 10, 14, 8, 16][i],
+                borderRadius: '50%',
+                background: 'var(--border)',
+                left: [40, 90, 130, 60, 110, 150][i],
+                top: [20, 50, 30, 80, 70, 10][i],
+                animation: 'pulse 1.6s ease-in-out infinite',
+                animationDelay: `${i * 0.15}s`,
+              }} />
+            ))}
+          </div>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>加载图谱…</span>
+        </div>
+        <style>{`@keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }`}</style>
       </div>
     );
   }

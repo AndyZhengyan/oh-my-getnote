@@ -7,6 +7,14 @@ interface TooltipProps {
   tooltip: TooltipState | null;
 }
 
+function formatDate(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export default function Tooltip({ tooltip }: TooltipProps) {
   if (!tooltip) return null;
 
@@ -23,17 +31,48 @@ export default function Tooltip({ tooltip }: TooltipProps) {
         borderRadius: 'var(--radius-md)',
         boxShadow: 'var(--shadow-md)',
         padding: '10px 14px',
-        maxWidth: 240,
+        maxWidth: 260,
         zIndex: 300,
         pointerEvents: 'none',
       }}
     >
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+      <div style={{
+        fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+        marginBottom: 5, letterSpacing: '-0.01em', lineHeight: 1.3,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
         {tooltip.title}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-        {tooltip.snippet}
-      </div>
+      {(tooltip.type || tooltip.createdAt) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+          fontSize: 11, fontFamily: 'var(--font-ui)',
+        }}>
+          {tooltip.type && (
+            <span style={{
+              padding: '1px 6px', borderRadius: 3,
+              background: 'var(--accent-light)',
+              color: 'var(--accent)', fontWeight: 500,
+            }}>
+              {tooltip.type}
+            </span>
+          )}
+          {tooltip.createdAt && (
+            <span style={{ color: 'var(--text-muted)' }}>
+              {formatDate(tooltip.createdAt)}
+            </span>
+          )}
+        </div>
+      )}
+      {tooltip.snippet && (
+        <div style={{
+          fontSize: 11, color: 'var(--text-secondary)',
+          lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box',
+          WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+        }}>
+          {tooltip.snippet}
+        </div>
+      )}
     </div>
   );
 }

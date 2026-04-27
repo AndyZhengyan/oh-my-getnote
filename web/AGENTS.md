@@ -1,5 +1,10 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Agent Rules for `/web`
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+All agent guidance for the web app lives in `CLAUDE.md` in this same directory.
+
+**Read `web/CLAUDE.md` first** before working on any web app code. It covers:
+- Next.js 16 / React 19 patterns and restrictions
+- TypeScript strict mode and component conventions
+- Zustand state management patterns
+- LanceDB / OpenAI server-side only constraints
+- Environment variables and npm scripts

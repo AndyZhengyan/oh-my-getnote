@@ -26,7 +26,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --config=playwright.config.ts"
   },
   "dependencies": {
     "framer-motion": "^12.38.0",
