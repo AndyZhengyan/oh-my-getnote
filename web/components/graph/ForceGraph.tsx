@@ -126,6 +126,10 @@ export default function ForceGraph() {
     browsePath
   );
 
+  // Stable reference for ForceGraph2D — avoids canvas re-render on every
+  // tooltip state update which creates new { nodes, links } inline objects.
+  const graphData = useMemo(() => ({ nodes, links }), [nodes, links]);
+
   // Register reset and heat functions with the global event system
   useEffect(() => {
     registerGraphReset(() => {
@@ -205,17 +209,36 @@ export default function ForceGraph() {
     // No cleanup needed — alpha(0) is set by filter effect or this settles naturally
   }, [nodes.length]);
 
-  // Pan to the selected node when it changes (e.g. from clicking a recommended path card)
+  const pendingCenterRafRef = useRef(0);
+
+  // Pan to the selected node when it changes (e.g. from clicking a recommended path card).
+  // Retries with rAF because nodeCanvasObject (which populates getNodePosCache) runs inside
+  // the ForceGraph2D rAF loop, which fires after React effects — so the cache is empty on the
+  // first attempt for newly added nodes.
   useEffect(() => {
     if (!selectedNodeId || !fgRef.current) return;
-    const nodePos = getNodePosCache().get(selectedNodeId);
-    if (nodePos && nodePos.x != null && nodePos.y != null) {
-      fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
-    }
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const tryCenter = () => {
+      if (!fgRef.current) return;
+      const nodePos = getNodePosCache().get(selectedNodeId);
+      if (nodePos && nodePos.x != null && nodePos.y != null) {
+        fgRef.current.centerAt(nodePos.x, nodePos.y, 400);
+        return;
+      }
+      if (++attempts < maxAttempts) {
+        pendingCenterRafRef.current = requestAnimationFrame(tryCenter);
+      }
+    };
+    cancelAnimationFrame(pendingCenterRafRef.current);
+    pendingCenterRafRef.current = requestAnimationFrame(tryCenter);
+    return () => cancelAnimationFrame(pendingCenterRafRef.current);
   }, [selectedNodeId]);
 
   // When a node is selected, zoom in to show its neighborhood (≈20-25 nodes, readable titles).
   // Also sets skipAutoFitZoomRef so the [nodes] auto-fit effect defers to this centering.
+  // Same rAF retry as above — position cache may be empty for newly added nodes.
   useEffect(() => {
     if (!selectedNodeId || !fgRef.current) return;
     // Signal the [nodes] auto-fit effect to skip its animated zoom, then clear
@@ -224,11 +247,22 @@ export default function ForceGraph() {
     if (autoFitSkipTimerRef.current) clearTimeout(autoFitSkipTimerRef.current);
     autoFitSkipTimerRef.current = setTimeout(() => { skipAutoFitZoomRef.current = false; }, 200);
 
-    const nodePos = getNodePosCache().get(selectedNodeId);
-    if (!nodePos || nodePos.x == null) return;
-    // Center on selected node and zoom in so text is readable
-    fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
-    fgRef.current.zoom(2.5, 300);
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const tryZoom = () => {
+      if (!fgRef.current) return;
+      const nodePos = getNodePosCache().get(selectedNodeId);
+      if (nodePos && nodePos.x != null && nodePos.y != null) {
+        fgRef.current.centerAt(nodePos.x, nodePos.y, 300);
+        fgRef.current.zoom(2.5, 300);
+        return;
+      }
+      if (++attempts < maxAttempts) {
+        requestAnimationFrame(tryZoom);
+      }
+    };
+    requestAnimationFrame(tryZoom);
   }, [selectedNodeId]);
 
   // Initial graph zoom-in: show ~20-30 nodes with readable titles (not all 655)
@@ -342,13 +376,16 @@ export default function ForceGraph() {
     lastMouseMoveRef.current = now;
 
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || !graphIndex) return;
+    const fg = fgRef.current;
+    if (!rect || !graphIndex || !fg) return;
 
-    // Convert mouse position to canvas-world coordinates (account for zoom + pan)
+    // Use the graph's built-in coordinate conversion — always correct
+    // regardless of programmatic zoom/pan that bypasses handleZoom.
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
-    const mx = (screenX - zoomState.x) / zoomState.k;
-    const my = (screenY - zoomState.y) / zoomState.k;
+    const worldPos = fg.screen2GraphCoords(screenX, screenY);
+    const mx = worldPos.x;
+    const my = worldPos.y;
 
     let closest: TooltipState | null = null;
     let closestDist = 25;
@@ -366,17 +403,23 @@ export default function ForceGraph() {
       const hitRadius = (visual.rBase + Math.min(node.connections / 2, 10)) * visual.rScale + 6;
       if (dist < hitRadius && dist < closestDist) {
         closestDist = dist;
+        // Position tooltip at the node's canvas coords converted to screen space
+        // via the graph's own conversion, so the card follows the node position.
+        const nodeScreen = fg.graph2ScreenCoords(node.x, node.y);
+        const entry = graphIndex.index[node.id];
         closest = {
           nodeId: node.id,
-          x: screenX,
-          y: screenY,
+          x: nodeScreen.x,
+          y: nodeScreen.y,
           title: node.title,
-          snippet: node.connections > 0 ? `${node.connections} 条关联` : '暂无关联',
+          type: entry?.type ?? '',
+          createdAt: entry?.createdAt ?? '',
+          snippet: entry?.bodyPreview ?? '',
         };
       }
     }
     setTooltip(closest);
-  }, [nodes, graphIndex, levelMap, zoomState]);
+  }, [nodes, graphIndex, levelMap]);
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null);
@@ -386,17 +429,12 @@ export default function ForceGraph() {
   const MAX_ZOOM = 2.5;
 
   const handleZoom = useCallback((transform: { k: number; x: number; y: number }) => {
-    // NOTE: Defer state updates via rAF to avoid "Cannot update a component
-    // while rendering" error. ForceGraph2D can fire onZoom during its render
-    // phase; calling setState directly would trigger React's concurrent-mode
-    // safeguard.
+    // Defer React state via rAF to avoid "Cannot update a component while
+    // rendering" — ForceGraph2D fires onZoom during its render phase.
     requestAnimationFrame(() => {
       setZoomState({ x: transform.x, y: transform.y, k: transform.k });
       setCurrentScale(Math.min(transform.k, MAX_ZOOM));
     });
-    // NOTE: Do NOT call resumeAnimation() here — it triggers an internal
-    // zoom event that re-enters handleZoom → infinite recursion (stack overflow).
-    // Animation is resumed on user interactions (click/drag) via handleNodeClick, etc.
   }, []);
   useEffect(() => {
     if (fgRef.current && nodes.length > 0) {
@@ -596,7 +634,7 @@ export default function ForceGraph() {
       <ForceGraphErrorBoundary fgRef={fgRef}>
       <ForceGraph2D
         ref={fgRef}
-        graphData={{ nodes, links }}
+        graphData={graphData}
         width={dims.w}
         height={dims.h}
         onZoom={handleZoom}

@@ -20,6 +20,8 @@ export interface TooltipState {
   x: number;
   y: number;
   title: string;
+  type: string;
+  createdAt: string;
   snippet: string;
 }
 
