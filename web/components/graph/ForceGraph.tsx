@@ -109,6 +109,10 @@ export default function ForceGraph() {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [zoomState, setZoomState] = useState<{ x: number; y: number; k: number }>({ x: dims.w / 2, y: dims.h / 2, k: 1 });
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  // Pinned tooltips: automatically show top-N related nodes as persistent cards
+  const [pinnedTooltips, setPinnedTooltips] = useState<TooltipState[]>([]);
+  const pinnedTooltipsRef = useRef<TooltipState[]>([]);
+  const pinnedPosRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const levelMap = useMemo(
     () => buildLevelMap(selectedNodeId, focusedNodeId, focusedNeighborIds, browsePath, graphIndex),
@@ -351,11 +355,102 @@ export default function ForceGraph() {
     };
   }, []);
 
-  // rAF loop for canvas pulse animation — drives nodeCanvasObject without Date.now()
+  // When a node is selected, show top-3 related nodes as pinned tooltip cards on canvas.
   useEffect(() => {
+    if (!selectedNodeId || !graphIndex || !fgRef.current) {
+      setPinnedTooltips([]);
+      return;
+    }
+    const entry = graphIndex.index[selectedNodeId];
+    if (!entry || !entry.connections.length) {
+      setPinnedTooltips([]);
+      return;
+    }
+    // Top 3 by connection score, exclude already-visited browsePath nodes
+    const visited = new Set(browsePath);
+    const top3 = entry.connections
+      .filter(c => !visited.has(c.noteId))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    const tips: TooltipState[] = top3.map(c => {
+      const ce = graphIndex.index[c.noteId];
+      // Use cached position for immediate placement; rAF loop keeps it updated
+      const nodePos = getNodePosCache().get(c.noteId);
+      let sx = 0, sy = 0;
+      if (nodePos && nodePos.x != null && nodePos.y != null && fgRef.current) {
+        const screen = fgRef.current.graph2ScreenCoords(nodePos.x, nodePos.y);
+        sx = screen.x; sy = screen.y;
+      }
+      return {
+        nodeId: c.noteId,
+        x: sx, y: sy,
+        title: ce?.title ?? c.noteId,
+        type: ce?.type ?? '',
+        createdAt: ce?.createdAt ?? '',
+        snippet: ce?.bodyPreview ?? '',
+      };
+    });
+    setPinnedTooltips(tips);
+    pinnedTooltipsRef.current = tips;
+  }, [selectedNodeId, browsePath, graphIndex]);
+
+  // rAF loop for canvas pulse animation + pinned tooltip position updates.
+  // Each card is placed near its own node, with vertical collision resolution.
+  useEffect(() => {
+    const CARD_H = 112;
+    const CARD_GAP = 6;
     let rafId: number;
     const tick = () => {
       pulseTimeRef.current = performance.now();
+      const fg = fgRef.current;
+      const current = pinnedTooltipsRef.current;
+      if (fg && current.length > 0) {
+        // Collect per-node screen positions with metadata
+        const items = current.map(pt => {
+          const pos = getNodePosCache().get(pt.nodeId);
+          const screen = (pos && pos.x != null && pos.y != null)
+            ? fg.graph2ScreenCoords(pos.x, pos.y) : null;
+          return { pt, screen };
+        }).filter(it => it.screen) as { pt: TooltipState; screen: { x: number; y: number } }[];
+
+        if (items.length > 0) {
+          // Preferred position: to the right of each node, vertically centered on it
+          const preferred = items.map(it => ({
+            ...it,
+            px: it.screen.x + 16,
+            py: it.screen.y - CARD_H / 2,
+          }));
+
+          // Sort by preferred Y for overlap resolution
+          preferred.sort((a, b) => a.py - b.py);
+
+          // Resolve vertical overlaps: push down overlapped cards
+          for (let i = 1; i < preferred.length; i++) {
+            const prevBottom = preferred[i - 1].py + CARD_H + CARD_GAP;
+            if (preferred[i].py < prevBottom) {
+              preferred[i].py = prevBottom;
+            }
+          }
+
+          // Detect changes and update
+          let changed = false;
+          const next = new Map<string, { x: number; y: number }>();
+          for (const p of preferred) {
+            next.set(p.pt.nodeId, { x: p.px, y: p.py });
+            const prev = pinnedPosRef.current.get(p.pt.nodeId);
+            if (!prev || Math.abs(prev.x - p.px) > 0.5 || Math.abs(prev.y - p.py) > 0.5) {
+              changed = true;
+            }
+          }
+          if (changed) {
+            pinnedPosRef.current = next;
+            setPinnedTooltips(prev => prev.map(pt => {
+              const s = next.get(pt.nodeId);
+              return s ? { ...pt, x: s.x, y: s.y } : pt;
+            }));
+          }
+        }
+      }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -394,8 +489,9 @@ export default function ForceGraph() {
       if (node.x == null || node.y == null) continue;
       const level = levelMap.get(node.id) ?? 'peripheral';
       const visual = getNodeVisual(level);
-      // Don't show tooltip for ghost nodes
+      // Don't show tooltip for ghost nodes or nodes with pinned cards
       if (visual.ghost) continue;
+      if (pinnedTooltips.some(pt => pt.nodeId === node.id)) continue;
 
       const dx = mx - node.x;
       const dy = my - node.y;
@@ -419,7 +515,7 @@ export default function ForceGraph() {
       }
     }
     setTooltip(closest);
-  }, [nodes, graphIndex, levelMap]);
+  }, [nodes, graphIndex, levelMap, pinnedTooltips]);
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null);
@@ -465,6 +561,8 @@ export default function ForceGraph() {
   const handleBackgroundClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'CANVAS') {
+      setPinnedTooltips([]);
+      pinnedTooltipsRef.current = [];
       if (browsePath.length > 0) {
         setClearConfirmOpen(true);
       } else {
@@ -667,6 +765,15 @@ export default function ForceGraph() {
 
       <ClearConfirmDialog isOpen={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} />
       <Tooltip tooltip={tooltip} />
+      {pinnedTooltips.map((pt, i) => (
+        <Tooltip key={pt.nodeId} tooltip={pt} pinned rank={i + 1}
+          onClick={() => {
+            setPinnedTooltips([]);
+            pinnedTooltipsRef.current = [];
+            selectNode(pt.nodeId);
+          }}
+        />
+      ))}
     </div>
   );
 }
