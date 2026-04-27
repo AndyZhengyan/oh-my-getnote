@@ -86,7 +86,7 @@ jobs:
         env:
           NODE_ENV: development
         # Redirect to a file so we can tail it on failure
-        run: cd web && npm run dev &> /tmp/nextjs-dev.log &
+        run: cd web && npm run dev -- -p 3001 &> /tmp/nextjs-dev.log &
 
       - name: Wait for dev server to be ready
         run: |
