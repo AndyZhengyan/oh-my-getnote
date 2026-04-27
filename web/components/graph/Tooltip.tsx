@@ -5,6 +5,9 @@ import type { TooltipState } from './types';
 
 interface TooltipProps {
   tooltip: TooltipState | null;
+  pinned?: boolean;
+  rank?: number;
+  onClick?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -15,27 +18,40 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-export default function Tooltip({ tooltip }: TooltipProps) {
+export default function Tooltip({ tooltip, pinned, rank, onClick }: TooltipProps) {
   if (!tooltip) return null;
 
   return (
     <div
+      onClick={onClick}
       style={{
         position: 'absolute',
         left: tooltip.x + 14,
         top: tooltip.y - 10,
-        background: 'rgba(255,255,255,0.95)',
+        background: pinned ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.95)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid var(--border)',
+        border: `1px solid ${pinned ? 'var(--accent)' : 'var(--border)'}`,
         borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: pinned ? '0 4px 16px rgba(0,0,0,0.1)' : 'var(--shadow-md)',
         padding: '10px 14px',
         maxWidth: 260,
-        zIndex: 300,
-        pointerEvents: 'none',
+        zIndex: pinned ? 290 : 300,
+        pointerEvents: pinned ? 'auto' : 'none',
+        cursor: pinned ? 'pointer' : undefined,
+        transition: pinned ? 'box-shadow 0.15s' : undefined,
       }}
+      onMouseEnter={pinned ? e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)'; } : undefined}
+      onMouseLeave={pinned ? e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'; } : undefined}
     >
+      {pinned && rank != null && (
+        <div style={{
+          fontSize: 9, color: 'var(--accent)', fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2,
+        }}>
+          推荐 #{rank}
+        </div>
+      )}
       <div style={{
         fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
         marginBottom: 5, letterSpacing: '-0.01em', lineHeight: 1.3,
